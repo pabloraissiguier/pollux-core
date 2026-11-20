@@ -1,0 +1,47 @@
+# Local development environment for pollux-core.
+# For now only Postgres is defined; api and dashboard services are commented
+# placeholders until those apps are scaffolded.
+name: pollux
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: pollux-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pollux}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pollux}
+      POSTGRES_DB: ${POSTGRES_DB:-pollux}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pollux-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pollux} -d ${POSTGRES_DB:-pollux}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # api:
+  #   build:
+  #     context: ./apps/api
+  #     dockerfile: ../../docker/api.Dockerfile
+  #   env_file: .env
+  #   ports:
+  #     - "${API_PORT:-3001}:3001"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+
+  # dashboard:
+  #   build:
+  #     context: ./apps/dashboard
+  #     dockerfile: ../../docker/dashboard.Dockerfile
+  #   env_file: .env
+  #   ports:
+  #     - "${DASHBOARD_PORT:-3000}:3000"
+  #   depends_on:
+  #     - api
+
+volumes:
+  pollux-db-data:
