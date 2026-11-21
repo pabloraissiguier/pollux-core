@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { test as base, expect } from '@playwright/test'
+import type { CustomerCreateInput } from '@pollux/contracts'
 import postgres from 'postgres'
-import { e2eDatabaseUrl } from './env'
+import { E2E_API_PORT, e2eDatabaseUrl } from './env'
 
 interface Fixtures {
   /** Creates a signed-up user who owns the named businesses, and returns the user's id. */
@@ -15,6 +16,8 @@ interface Fixtures {
   signIn: (userId: string, options?: { from?: 'start' | 'here' }) => Promise<void>
   /** On a phone the sidebar is a drawer: opens it. On a wide screen it's always there. */
   openSidebar: () => Promise<void>
+  /** Creates a Customer through the API in the user's first business, and returns its id. */
+  createCustomer: (userId: string, input: CustomerCreateInput) => Promise<string>
 }
 
 const sql = postgres(e2eDatabaseUrl(), { max: 2, onnotice: () => {} })
@@ -22,7 +25,8 @@ const sql = postgres(e2eDatabaseUrl(), { max: 2, onnotice: () => {} })
 /**
  * Setup data with no endpoint (users, businesses, memberships) goes straight into the E2E
  * database, as in the API suite's fixtures. Everything else goes through the app. Each test makes
- * its own user and businesses, so tests run in parallel without cleaning up.
+ * its own user and businesses, so tests run in parallel without cleaning up. Data a test only
+ * needs as a starting point (e.g. Customers) may go through the API directly.
  */
 export const test = base.extend<Fixtures>({
   // eslint-disable-next-line no-empty-pattern
@@ -52,6 +56,20 @@ export const test = base.extend<Fixtures>({
       await page.getByRole('textbox', { name: 'Email' }).fill('duenio@prueba.local')
       await page.getByRole('textbox', { name: 'Contraseña' }).fill(userId)
       await page.getByRole('button', { name: 'Ingresar' }).click()
+    })
+  },
+  // eslint-disable-next-line no-empty-pattern
+  createCustomer: async ({}, use) => {
+    await use(async (userId, input) => {
+      const [business] = await sql<{ id: string }[]>`
+        select m.business_id as id from app.business_members m where m.profile_id = ${userId} limit 1`
+      const res = await fetch(`http://localhost:${E2E_API_PORT}/customers`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${userId}`, 'X-Business-Id': business!.id, 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      })
+      if (!res.ok) throw new Error(`Creating a Customer failed: ${res.status} ${await res.text()}`)
+      return (await res.json() as { id: string }).id
     })
   },
   openSidebar: async ({ page, isMobile }, use) => {
