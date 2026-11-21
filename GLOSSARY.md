@@ -12,6 +12,10 @@ _Avoid_: Cliente de cuenta corriente, cliente contado, client, buyer
 One of a customer's delivery addresses. Every customer has at least one, and most have exactly one.
 _Avoid_: Domicilio, location, address (for the whole concept)
 
+**Localidad (Town)**:
+The town a Branch is in (its `city`). Orders are planned and delivered town by town, so Customers and the reparto list are filtered by it. There is no separate Route entity.
+_Avoid_: Ruta, zona, city (in UI)
+
 **Condición frente al IVA (VAT condition)**:
 A customer's tax status (Responsable Inscripto, Monotributo, Consumidor Final, Exento), kept for future invoicing.
 _Avoid_: Tax type, categoría fiscal

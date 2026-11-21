@@ -1,3 +1,5 @@
 export * from './cuit'
+export * from './customers'
 export * from './enums'
 export * from './money'
+export * from './pagination'
