@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addMoney, applyDiscount, moneySchema, multiplyMoney, percentOf, subtractMoney, sumMoney } from './money'
+import { addMoney, applyDiscount, changeByPercent, moneySchema, multiplyMoney, percentOf, subtractMoney, sumMoney } from './money'
 
 describe('money', () => {
   it('adds and subtracts decimal strings without float drift', () => {
@@ -27,6 +27,15 @@ describe('money', () => {
     // 0.15 minus 50% = 0.075 -> 0.08
     expect(applyDiscount('0.15', '50.00')).toBe('0.08')
     expect(applyDiscount('100.00', '0')).toBe('100.00')
+  })
+
+  it('raises or lowers an amount by a percentage, rounded half-up to cents', () => {
+    // 333.33 × 1.125 = 374.99625 -> 375.00
+    expect(changeByPercent('333.33', '12.50')).toBe('375.00')
+    // 0.15 × 0.5 = 0.075 -> 0.08
+    expect(changeByPercent('0.15', '-50.00')).toBe('0.08')
+    expect(changeByPercent('1234.56', '-100.00')).toBe('0.00')
+    expect(changeByPercent('10.00', '1000.00')).toBe('110.00')
   })
 
   it('rounds negative amounts away from zero', () => {
