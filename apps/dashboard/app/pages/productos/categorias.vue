@@ -40,6 +40,13 @@ async function onSaved() {
 
         <template #right>
           <UButton
+            to="/productos/actualizar-precios"
+            icon="i-lucide-percent"
+            aria-label="Actualizar precios"
+            color="neutral"
+            variant="ghost"
+          />
+          <UButton
             icon="i-lucide-plus"
             label="Nueva categoría"
             @click="openCreate"
@@ -83,6 +90,13 @@ async function onSaved() {
               class="size-5 shrink-0 text-dimmed"
             />
           </ULink>
+          <UButton
+            :to="{ path: '/productos/actualizar-precios', query: { categoria: category.id } }"
+            icon="i-lucide-percent"
+            :aria-label="`Actualizar precios de ${category.name}`"
+            color="neutral"
+            variant="ghost"
+          />
           <UButton
             icon="i-lucide-pencil"
             :aria-label="`Renombrar ${category.name}`"

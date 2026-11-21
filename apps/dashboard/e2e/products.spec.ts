@@ -1,13 +1,5 @@
-import { expect, test, type Page } from './fixtures'
-
-async function createCategory(page: Page, name: string) {
-  await page.goto('/productos/categorias')
-  await page.getByRole('button', { name: 'Nueva categoría' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Nueva categoría' })
-  await dialog.getByRole('textbox', { name: 'Nombre' }).fill(name)
-  await dialog.getByRole('button', { name: 'Crear categoría' }).click()
-  await expect(page.getByRole('link', { name })).toBeVisible()
-}
+import { createCategory, createProduct } from './catalog'
+import { expect, test } from './fixtures'
 
 test('the owner creates a Product, changes its Price and sees the price history', { tag: '@desktop' }, async ({ page, createOwner, signIn }) => {
   const userId = await createOwner('Gio Pack')
@@ -48,19 +40,6 @@ test('the owner creates a Product, changes its Price and sees the price history'
   await expect(row).toContainText('$ 1.500,00')
   await expect(row).toContainText('Descartables')
 })
-
-async function createProduct(page: Page, product: { code: string, name: string, category?: string, price: string }) {
-  await page.goto('/productos/nuevo')
-  await page.getByRole('textbox', { name: 'Código' }).fill(product.code)
-  await page.getByRole('textbox', { name: 'Nombre' }).fill(product.name)
-  if (product.category) {
-    await page.getByRole('button', { name: 'Categoría' }).click()
-    await page.getByRole('option', { name: product.category }).click()
-  }
-  await page.getByRole('textbox', { name: 'Precio' }).fill(product.price)
-  await page.getByRole('button', { name: 'Crear producto' }).click()
-  await expect(page.getByRole('heading', { name: product.name, level: 1 })).toBeVisible()
-}
 
 test('the owner edits a Product and makes it Inactive, and the catalog hides it until asked', async ({ page, createOwner, signIn }) => {
   const userId = await createOwner('Gio Pack')
@@ -127,7 +106,7 @@ test('the owner browses the catalog by Category and searches it', async ({ page,
 
   // A Category on the Categories screen opens the catalog filtered by it.
   await page.goto('/productos/categorias')
-  await page.getByRole('link', { name: 'Descartables' }).click()
+  await page.getByRole('link', { name: 'Descartables', exact: true }).click()
   await expect(page.getByRole('link', { name: /Vaso térmico 180 cc/ })).toBeVisible()
   await expect(page.getByRole('link', { name: /Lavandina/ })).toHaveCount(0)
 
@@ -148,8 +127,8 @@ test('the owner renames a Category', async ({ page, createOwner, signIn }) => {
   await dialog.getByRole('textbox', { name: 'Nombre' }).fill('Limpieza')
   await dialog.getByRole('button', { name: 'Guardar nombre' }).click()
 
-  await expect(page.getByRole('link', { name: 'Limpieza' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Limpiesa' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Limpieza', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Limpiesa', exact: true })).toHaveCount(0)
 
   // A name already in use is refused with the API's message.
   await createCategory(page, 'Bolsas')
