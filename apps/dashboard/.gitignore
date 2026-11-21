@@ -22,3 +22,9 @@ logs
 .env
 .env.*
 !.env.example
+
+# Playwright
+.nuxt-e2e
+.output-e2e
+test-results
+playwright-report
