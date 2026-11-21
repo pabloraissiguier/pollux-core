@@ -1,0 +1,3 @@
+# Delivery is a state of the Order, with no partial deliveries
+
+There is no separate Delivery entity. An Order goes Pending → Delivered (or Cancelled), and it is delivered whole: if what actually goes out differs, the user edits the Order before marking it Delivered. Marking it Delivered takes the stock out and debits the Balance. Delivered Orders are fixed through Undo delivery, which puts the Order back to Pending, returns the stock and adds a reversing Balance entry; nothing is edited in place. We chose this to keep the first version simple, knowing that partial deliveries with items left pending are a likely future need. When that comes, a Delivery entity tracking what is still owed will be introduced and this ADR superseded.

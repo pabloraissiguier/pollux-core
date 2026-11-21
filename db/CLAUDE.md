@@ -15,6 +15,7 @@ The app is **multi-tenant from day one**: many businesses (PyMEs) share one data
 - **`app.businesses` is the tenant table.** `app.business_members (business_id, profile_id, role)` links users to businesses. One user can belong to several businesses.
 - **Every business table has `business_id uuid not null`** referencing `app.businesses`. Uniqueness is per tenant, e.g. `unique (business_id, sku)`, not a global `unique (sku)`.
 - **References between business tables include `business_id`** (composite FK `(business_id, x_id)` → `(business_id, id)`, which needs a `unique (business_id, id)` on the parent), so a row can never point at another tenant's data.
+- **Child tables** (e.g. `order_lines`, `branches`) reach `app.businesses` through their composite FK to the parent, not a separate FK.
 - **Index every business table on `business_id`**, either alone or as the leading column of a composite index.
 - **Tenant isolation is enforced in the API:** every query is scoped by the current `business_id`, resolved from the user's membership. See `apps/api/CLAUDE.md`.
 
@@ -24,9 +25,9 @@ The app is **multi-tenant from day one**: many businesses (PyMEs) share one data
 |---|---|---|
 | `auth` | Supabase | User accounts and sessions (`auth.users`). **We never create or alter tables here.** |
 | `public` | us | Only `public.profiles`, the app's user profile (1:1 with `auth.users`). No business tables. |
-| `app` | us | Tenancy (`businesses`, `business_members`) and **all business tables**: customers, products, stock, orders, deliveries, remitos, ledger entries, payments, purchases, … |
+| `app` | us | Tenancy (`businesses`, `business_members`, `business_sequences`) and **all business tables**: customers, branches, categories, products, orders, payments, balance entries, stock movements, suppliers, purchases, … |
 
-The `app` schema name is provisional. Rename it before the first migration if a better name comes up.
+`app` is the final schema name: it's in the first migration.
 
 ### Rules that keep it portable
 - **`public.profiles` is the only table that references `auth.users`** (`id uuid primary key references auth.users(id) on delete cascade`). Business tables reference `public.profiles(id)` (e.g. `created_by`), **never `auth.users` directly**. If we replace Supabase Auth, only `profiles` and its FK change.
@@ -38,7 +39,9 @@ The `app` schema name is provisional. Rename it before the first migration if a 
 
 ## Migrations
 
-- **Drizzle (in `apps/api`) is the source of truth.** `drizzle-kit` writes plain SQL into `db/migrations/`, and those files are applied to the Supabase project with `drizzle-kit migrate`.
+- **`db/` is the `@pollux/db` workspace package, and its Drizzle schema (`db/src/schema/`, one file per domain area) is the source of truth.** `apps/api` imports it as `@pollux/db/schema`. `drizzle-kit` (config in `db/drizzle.config.ts`) writes plain SQL into `db/migrations/`, and those files are applied to the Supabase project with `drizzle-kit migrate`. The config reads `DATABASE_URL` from the root `.env`.
+- **Commands** (from the repo root): `pnpm db:generate --name <change>` writes a new migration from schema changes; `pnpm db:migrate` applies pending ones; `pnpm --filter @pollux/db typecheck`.
+- **Table and column names follow `GLOSSARY.md`'s English terms** (e.g. `branches`, `balance_entries`, `stock_movements`).
 - **Don't change the schema any other way:** not through the Supabase dashboard, and not with the Supabase MCP `apply_migration` or DDL through `execute_sql`. Either one causes drift from `db/migrations/`. The Supabase MCP is fine for **read-only** work: `list_tables`, `SELECT` queries, logs, advisors.
 - **It's a shared remote database, so migrations are hard to reverse.** Review the generated SQL before applying it, and never run destructive SQL (`DROP`, `TRUNCATE`, mass `DELETE`) without asking.
 - `db/seeds/` holds demo data (a Gio Pack-like business with its catalog, customers and towns). Seeds must be idempotent and scoped to a specific `business_id`.

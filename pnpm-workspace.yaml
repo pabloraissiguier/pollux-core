@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "db"
 
 allowBuilds:
   '@parcel/watcher': false

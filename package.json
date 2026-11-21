@@ -4,6 +4,8 @@
   "packageManager": "pnpm@12.21.0",
   "scripts": {
     "dev:dashboard": "pnpm --filter dashboard dev",
-    "build:dashboard": "pnpm --filter dashboard build"
+    "build:dashboard": "pnpm --filter dashboard build",
+    "db:generate": "pnpm --filter @pollux/db generate",
+    "db:migrate": "pnpm --filter @pollux/db migrate"
   }
 }

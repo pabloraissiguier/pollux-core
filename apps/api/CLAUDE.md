@@ -31,9 +31,11 @@ The stack is decided, but the app has **not been scaffolded yet**. Once it is, a
 
 ## Conventions
 
-- **The schema and migrations live in the repo-level `db/`, not in this app.** Point drizzle-kit's `out` at `../../db/migrations`. The schema stays independent of the framework.
+- **The schema and migrations live in the repo-level `db/` package (`@pollux/db`), not in this app.** Import tables from `@pollux/db/schema`; never define tables here. See `db/CLAUDE.md`.
 - **Money is `numeric(14,2)`**: never JS floats or `real`/`double` columns. Handle amounts as strings or decimals in code, not as `number`.
-- **A customer's balance is calculated from their ledger entries**, not stored as a column that gets edited in place.
+- **A customer's Balance is the sum of their `balance_entries`**, never a stored column. Entries and stock movements are insert-only: fixes are new reversing rows (see `docs/adr/0001`).
+- **Reserved stock is derived** from lines of Pending Orders; `products.stock_on_hand` is a cache updated in the same transaction as each `stock_movements` insert.
+- **Order and Delivery note numbers** come from `app.business_sequences` (`UPDATE ... SET last_value = last_value + 1 RETURNING last_value`) inside the transaction that needs them.
 - **Stock and ledger changes happen in one transaction** with the order, delivery or payment that caused them. Lock the stock rows you change (`SELECT ... FOR UPDATE`) so two orders placed at once can't take the same stock.
 - **Every request is tenant-scoped.** Middleware authenticates the user (Supabase Auth JWT), resolves the active `business_id` and checks it against `app.business_members`. That `business_id` goes on the request context, and **every query filters by it**. Never take `business_id` from a request body without checking membership. Tenant isolation lives here, not in RLS (see `db/CLAUDE.md`).
 - **The payment method belongs to the delivery or payment, not the customer** (see the root `CLAUDE.md`). Never model customer "types" for cuenta corriente vs. contado.
