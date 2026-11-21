@@ -41,3 +41,10 @@ The stack is decided, but the app has **not been scaffolded yet**. Once it is, a
 - **The payment method belongs to the delivery or payment, not the customer** (see the root `CLAUDE.md`). Never model customer "types" for cuenta corriente vs. contado.
 - **Export the app's type** (`export type AppType = typeof app`) so the dashboard can use it with `hc<AppType>()`. Chain route definitions so the types carry through.
 - **Put Zod request schemas that the dashboard also uses** (e.g. order forms) in a shared workspace package rather than duplicating them.
+
+## Hono guidance and tooling
+
+- **Use the `hono` skill** for Hono APIs (routing, middleware, validation, RPC client, testing). For anything beyond it, fetch the current docs from hono.dev as the skill describes, rather than relying on memory.
+- **Hono CLI (`@hono/cli`) for quick checks, Vitest for proof.** Use `hono routes`, `hono request` and `hono batch` to inspect routes and try flows in-process while building, instead of throwaway scripts or a running dev server. They don't replace tests: a ticket's behavior is proven by Vitest HTTP tests against the local test Postgres.
+- **pnpm, not npm:** install and run it as a dev dependency of this app (`pnpm add -D @hono/cli`, `pnpm exec hono …`), not with the `npm`/`npx` commands the skill shows.
+- **The CLI needs a default app module.** The app is built by a factory, so the module the CLI loads (default `src/index.ts`) must build a ready app from env: the DB from `.env`, and the real Supabase verifier unless a dev flag selects the test verifier. Point it at the local test DB, not Supabase, when trying writes. Never pass tokens or passwords as CLI arguments; use env vars, as the skill says.
