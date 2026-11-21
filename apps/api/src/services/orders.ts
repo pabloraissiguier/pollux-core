@@ -5,6 +5,7 @@ import { and, asc, count, desc, eq, inArray, notInArray, sql } from 'drizzle-orm
 import type { z } from 'zod'
 import type { Database, DbOrTx, Transaction } from '../db'
 import { ApiError } from '../errors'
+import { assertCustomer } from './customers'
 import { reservedStock } from './products'
 import { nextNumber } from './sequences'
 import { lockProducts } from './stock'
@@ -15,7 +16,6 @@ type ValidOrderListQuery = z.output<typeof orderListQuerySchema>
 type ValidOrderLine = ValidOrderCreate['lines'][number]
 
 const orderNotFound = () => new ApiError(404, 'order_not_found', 'No encontramos el pedido')
-const customerNotFound = () => new ApiError(404, 'customer_not_found', 'No encontramos el cliente')
 const branchNotOfCustomer = () =>
   new ApiError(400, 'branch_not_of_customer', 'La sucursal no es de este cliente')
 const orderNotPending = () =>
@@ -192,11 +192,7 @@ function newLines(
  */
 export async function createOrder(db: Database, businessId: string, profileId: string, input: ValidOrderCreate) {
   return db.transaction(async (tx) => {
-    const [customer] = await tx
-      .select({ id: customers.id })
-      .from(customers)
-      .where(and(eq(customers.businessId, businessId), eq(customers.id, input.customerId)))
-    if (!customer) throw customerNotFound()
+    await assertCustomer(tx, businessId, input.customerId)
     await assertBranchOfCustomer(tx, businessId, input.customerId, input.branchId)
 
     const catalog = await lockOrderProducts(tx, businessId, input.lines.map(l => l.productId))
@@ -276,7 +272,7 @@ export async function updateOrder(db: Database, businessId: string, orderId: str
         await tx
           .update(orderLines)
           .set({ position, quantity: line.quantity, discountPercent: line.discountPercent, updatedAt: sql`now()` })
-          .where(and(eq(orderLines.businessId, businessId), eq(orderLines.id, line.id)))
+          .where(and(eq(orderLines.businessId, businessId), eq(orderLines.orderId, orderId), eq(orderLines.id, line.id)))
       }
       if (added.length > 0) await tx.insert(orderLines).values(newLines(businessId, orderId, added, catalog))
     }
@@ -329,9 +325,12 @@ export async function listOrders(db: Database, businessId: string, query: ValidO
       .innerJoin(branches, and(eq(branches.businessId, businessId), eq(branches.id, orders.branchId)))
       .where(where),
   ])
-  const lineRows = await selectLines(db, businessId, rows.map(r => r.id))
+  const linesByOrder = new Map<string, LineRow[]>()
+  for (const line of await selectLines(db, businessId, rows.map(r => r.id))) {
+    linesByOrder.set(line.orderId, [...(linesByOrder.get(line.orderId) ?? []), line])
+  }
   return {
-    items: rows.map(row => toOrder(row, lineRows.filter(l => l.orderId === row.id))),
+    items: rows.map(row => toOrder(row, linesByOrder.get(row.id) ?? [])),
     total: counted!.total,
   }
 }

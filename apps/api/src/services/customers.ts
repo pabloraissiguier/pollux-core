@@ -49,7 +49,7 @@ const isCustomer = (businessId: string, customerId: string) =>
   and(eq(customers.businessId, businessId), eq(customers.id, customerId))
 
 /** Throws `customer_not_found` unless the Customer is in this business. */
-async function assertCustomer(db: DbOrTx, businessId: string, customerId: string) {
+export async function assertCustomer(db: DbOrTx, businessId: string, customerId: string) {
   const [found] = await db.select({ id: customers.id }).from(customers).where(isCustomer(businessId, customerId))
   if (!found) throw customerNotFound()
 }
