@@ -4,6 +4,12 @@ import postgres from 'postgres'
 
 export type Database = ReturnType<typeof createDb>['db']
 
+/** The handle inside `db.transaction(async tx => ...)`. */
+export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+
+/** For service helpers that run either on their own or inside a caller's transaction. */
+export type DbOrTx = Database | Transaction
+
 export interface DbOptions {
   /** Pool size. Keep it small on serverless. */
   max?: number

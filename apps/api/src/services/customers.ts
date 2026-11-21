@@ -8,17 +8,15 @@ import type {
 import { branches, customers } from '@pollux/db/schema'
 import { and, asc, count, eq, exists, ilike, inArray, or, sql } from 'drizzle-orm'
 import type { z } from 'zod'
-import type { Database } from '../db'
+import type { Database, DbOrTx } from '../db'
 import { ApiError } from '../errors'
 
-type Tx = Parameters<Parameters<Database['transaction']>[0]>[0]
-type Db = Database | Tx
-
-type CustomerCreate = z.output<typeof customerCreateSchema>
-type CustomerUpdate = z.output<typeof customerUpdateSchema>
-type BranchCreate = z.output<typeof branchSchema>
-type BranchUpdate = z.output<typeof branchUpdateSchema>
-type CustomerListQuery = z.output<typeof customerListQuerySchema>
+// Validated request bodies, after the shared schemas' transforms (e.g. CUIT formatted, '' → null).
+type ValidCustomerCreate = z.output<typeof customerCreateSchema>
+type ValidCustomerUpdate = z.output<typeof customerUpdateSchema>
+type ValidBranchCreate = z.output<typeof branchSchema>
+type ValidBranchUpdate = z.output<typeof branchUpdateSchema>
+type ValidCustomerListQuery = z.output<typeof customerListQuerySchema>
 
 const customerColumns = {
   id: customers.id,
@@ -43,40 +41,45 @@ const branchColumns = {
   notes: branches.notes,
 }
 
-export const customerNotFound = () => new ApiError(404, 'customer_not_found', 'No encontramos el cliente')
+const customerNotFound = () => new ApiError(404, 'customer_not_found', 'No encontramos el cliente')
+const branchNotFound = () => new ApiError(404, 'branch_not_found', 'No encontramos la sucursal de este cliente')
 
-/** The Branches of the given Customers, grouped by Customer, oldest first. */
-async function branchesOf(db: Db, businessId: string, customerIds: string[]) {
-  const byCustomer = new Map<string, Omit<typeof rows[number], 'customerId'>[]>()
-  if (customerIds.length === 0) return byCustomer
-  const rows = await db
+/** This business's Customer with this id. */
+const isCustomer = (businessId: string, customerId: string) =>
+  and(eq(customers.businessId, businessId), eq(customers.id, customerId))
+
+/** Throws `customer_not_found` unless the Customer is in this business. */
+async function assertCustomer(db: DbOrTx, businessId: string, customerId: string) {
+  const [found] = await db.select({ id: customers.id }).from(customers).where(isCustomer(businessId, customerId))
+  if (!found) throw customerNotFound()
+}
+
+/** The given Customer rows, each with its Branches (oldest first). */
+async function withBranches<C extends { id: string }>(db: DbOrTx, businessId: string, rows: C[]) {
+  if (rows.length === 0) return []
+  const branchRows = await db
     .select(branchColumns)
     .from(branches)
-    .where(and(eq(branches.businessId, businessId), inArray(branches.customerId, customerIds)))
+    .where(and(eq(branches.businessId, businessId), inArray(branches.customerId, rows.map(r => r.id))))
     .orderBy(asc(branches.createdAt), asc(branches.address), asc(branches.id))
-  for (const { customerId, ...branch } of rows) {
-    const list = byCustomer.get(customerId) ?? []
-    list.push(branch)
-    byCustomer.set(customerId, list)
-  }
-  return byCustomer
+  return rows.map(customer => ({
+    ...customer,
+    branches: branchRows
+      .filter(b => b.customerId === customer.id)
+      .map(({ id, name, address, city, province, postalCode, notes }) => ({ id, name, address, city, province, postalCode, notes })),
+  }))
 }
 
 /** One Customer with its Branches, or 404 when it isn't in this business. */
-export async function getCustomer(db: Db, businessId: string, customerId: string) {
-  const [customer] = await db
-    .select(customerColumns)
-    .from(customers)
-    .where(and(eq(customers.businessId, businessId), eq(customers.id, customerId)))
+export async function getCustomer(db: DbOrTx, businessId: string, customerId: string) {
+  const rows = await db.select(customerColumns).from(customers).where(isCustomer(businessId, customerId))
+  const [customer] = await withBranches(db, businessId, rows)
   if (!customer) throw customerNotFound()
-  const byCustomer = await branchesOf(db, businessId, [customer.id])
-  return { ...customer, branches: byCustomer.get(customer.id) ?? [] }
+  return customer
 }
 
-export type CustomerDetail = Awaited<ReturnType<typeof getCustomer>>
-
 /** Registers a Customer and its Branches in one transaction. */
-export async function createCustomer(db: Database, businessId: string, input: CustomerCreate) {
+export async function createCustomer(db: Database, businessId: string, input: ValidCustomerCreate) {
   return db.transaction(async (tx) => {
     const { branches: newBranches, ...fields } = input
     const [created] = await tx
@@ -89,34 +92,36 @@ export async function createCustomer(db: Database, businessId: string, input: Cu
 }
 
 /** Changes the given details of a Customer; `null` clears an optional one. */
-export async function updateCustomer(db: Database, businessId: string, customerId: string, input: CustomerUpdate) {
+export async function updateCustomer(db: Database, businessId: string, customerId: string, input: ValidCustomerUpdate) {
   const [updated] = await db
     .update(customers)
     .set({ ...input, updatedAt: sql`now()` })
-    .where(and(eq(customers.businessId, businessId), eq(customers.id, customerId)))
+    .where(isCustomer(businessId, customerId))
     .returning({ id: customers.id })
   if (!updated) throw customerNotFound()
   return getCustomer(db, businessId, customerId)
 }
 
 /** Adds a Branch to a Customer and returns the Customer with all its Branches. */
-export async function addBranch(db: Database, businessId: string, customerId: string, input: BranchCreate) {
+export async function addBranch(db: Database, businessId: string, customerId: string, input: ValidBranchCreate) {
   return db.transaction(async (tx) => {
-    const [customer] = await tx
-      .select({ id: customers.id })
-      .from(customers)
-      .where(and(eq(customers.businessId, businessId), eq(customers.id, customerId)))
-    if (!customer) throw customerNotFound()
+    await assertCustomer(tx, businessId, customerId)
     await tx.insert(branches).values({ ...input, businessId, customerId })
     return getCustomer(tx, businessId, customerId)
   })
 }
 
 /** Edits one of a Customer's Branches and returns the Customer with all its Branches. */
-export async function updateBranch(db: Database, businessId: string, customerId: string, branchId: string, input: BranchUpdate) {
+export async function updateBranch(
+  db: Database,
+  businessId: string,
+  customerId: string,
+  branchId: string,
+  input: ValidBranchUpdate,
+) {
   return db.transaction(async (tx) => {
-    // The Customer is checked first so another business's Customer is a `customer_not_found`.
-    await getCustomer(tx, businessId, customerId)
+    // Checked first, so another business's Customer is `customer_not_found` like everywhere else.
+    await assertCustomer(tx, businessId, customerId)
     const [updated] = await tx
       .update(branches)
       .set({ ...input, updatedAt: sql`now()` })
@@ -126,7 +131,7 @@ export async function updateBranch(db: Database, businessId: string, customerId:
         eq(branches.id, branchId),
       ))
       .returning({ id: branches.id })
-    if (!updated) throw new ApiError(404, 'branch_not_found', 'No encontramos la sucursal de este cliente')
+    if (!updated) throw branchNotFound()
     return getCustomer(tx, businessId, customerId)
   })
 }
@@ -140,16 +145,17 @@ function likeContains(text: string) {
  * Customers by name, with their Branches. `q` matches name, legal name or CUIT (with or without
  * dashes); `town` keeps Customers with a Branch in that town (case-insensitive).
  */
-export async function listCustomers(db: Database, businessId: string, query: CustomerListQuery) {
+export async function listCustomers(db: Database, businessId: string, query: ValidCustomerListQuery) {
   const { q, town, limit, offset } = query
-  const cuitDigits = q?.replace(/[-\s]/g, '')
+  // CUITs are stored as XX-XXXXXXXX-X, so both sides are compared without dashes.
+  const cuitQuery = q?.replace(/-/g, '')
   const where = and(
     eq(customers.businessId, businessId),
     q
       ? or(
           ilike(customers.name, likeContains(q)),
           ilike(customers.legalName, likeContains(q)),
-          cuitDigits ? sql`replace(${customers.cuit}, '-', '') ilike ${likeContains(cuitDigits)}` : undefined,
+          cuitQuery ? sql`replace(${customers.cuit}, '-', '') ilike ${likeContains(cuitQuery)}` : undefined,
         )
       : undefined,
     town
@@ -168,9 +174,5 @@ export async function listCustomers(db: Database, businessId: string, query: Cus
     db.select(customerColumns).from(customers).where(where).orderBy(asc(customers.name), asc(customers.id)).limit(limit).offset(offset),
     db.select({ total: count() }).from(customers).where(where),
   ])
-  const byCustomer = await branchesOf(db, businessId, rows.map(r => r.id))
-  return {
-    items: rows.map(r => ({ ...r, branches: byCustomer.get(r.id) ?? [] })),
-    total: counted!.total,
-  }
+  return { items: await withBranches(db, businessId, rows), total: counted!.total }
 }
