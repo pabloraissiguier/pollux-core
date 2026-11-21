@@ -4,7 +4,7 @@ This file covers the database schema and migrations. Product context and the dom
 
 ## Hosting
 
-- **The dev database is a remote Supabase project**, and that stays true for all of app development. There is **no local database**: the `db` service in `docker-compose.yml` isn't used for now.
+- **The dev database is a remote Supabase project**, and that stays true for all of app development. There is **no local database**: the `db` service in `docker-compose.yml` isn't used for now. The project ref is `jjynfsqpwktsckqrjfuu` (also pinned in `.mcp.json`).
 - **Self-hosted Postgres is a possible future move, not a current task.** Keep the schema portable (see the rules below) so that move would be a data migration, not a rewrite.
 - **Connection strings live in `.env` (gitignored).** Use the Supabase **session pooler** (port 5432) for migrations and long-lived connections, and the **transaction pooler** (port 6543, with prepared statements disabled, `prepare: false`) for serverless runtimes.
 
