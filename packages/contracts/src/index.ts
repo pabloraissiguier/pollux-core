@@ -1,3 +1,4 @@
+export * from './catalog'
 export * from './cuit'
 export * from './customers'
 export * from './enums'
