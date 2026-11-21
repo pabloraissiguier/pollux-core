@@ -2,6 +2,8 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const open = ref(false)
+const { activeBusiness, hasSeveral } = useActiveBusiness()
+const { signOut } = useSignOut()
 
 const links: NavigationMenuItem[] = [
   { label: 'Inicio', icon: 'i-lucide-house', to: '/', onSelect: () => { open.value = false } },
@@ -30,6 +32,18 @@ const links: NavigationMenuItem[] = [
       </template>
 
       <template #default="{ collapsed }">
+        <BusinessSwitcher
+          v-if="hasSeveral"
+          :collapsed="collapsed"
+        />
+        <UUser
+          v-else-if="activeBusiness && !collapsed"
+          :name="activeBusiness.name"
+          :avatar="{ icon: 'i-lucide-building-2' }"
+          size="sm"
+          class="px-2.5"
+        />
+
         <UNavigationMenu
           :collapsed="collapsed"
           :items="links"
@@ -39,6 +53,15 @@ const links: NavigationMenuItem[] = [
       </template>
 
       <template #footer="{ collapsed }">
+        <UButton
+          :label="collapsed ? undefined : 'Cerrar sesión'"
+          aria-label="Cerrar sesión"
+          icon="i-lucide-log-out"
+          color="neutral"
+          variant="ghost"
+          :square="collapsed"
+          @click="signOut"
+        />
         <UColorModeButton :class="collapsed ? '' : 'ms-auto'" />
       </template>
     </UDashboardSidebar>

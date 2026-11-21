@@ -18,14 +18,42 @@ pnpm build        # production build in .output/
 pnpm preview
 pnpm lint         # ESLint (add --fix)
 pnpm typecheck    # vue-tsc through nuxt typecheck
+pnpm test:e2e     # Playwright; needs `docker compose up -d db` (root). Builds and starts its own servers
+pnpm test:e2e e2e/sign-in.spec.ts             # one file
+pnpm test:e2e --project phone -g "signs in"   # one project, tests whose name matches
+pnpm test:unit    # Vitest, for pure modules (app/utils/format.ts)
 ```
 
-There is no test runner yet.
+First run on a machine: `pnpm exec playwright install chromium` (both projects use Chromium).
+
+### Environment
+
+`nuxt.config.ts` loads the root `.env`. Public runtime config, overridable at run time with `NUXT_PUBLIC_*`:
+
+| Key | Env at run time | Default |
+|---|---|---|
+| `apiBase` | `NUXT_PUBLIC_API_BASE` | `http://localhost:${API_PORT}` (3001) |
+| `supabaseUrl`, `supabasePublishableKey` | `NUXT_PUBLIC_SUPABASE_URL`, `NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` from `.env` at build time |
+| `authMode` | `NUXT_PUBLIC_AUTH_MODE` | `supabase`. `test` is for E2E only (see below) |
+
+The app is a client-side SPA (`ssr: false`): everything is behind sign-in and all data comes from the API with a bearer token held in the browser.
+
+## Tests
+
+- **Seam: the running app, end to end.** Playwright (`playwright.config.ts`, tests in `e2e/`) starts the API (`API_AUTH_VERIFIER=test`) on **3101** and a production build of the dashboard (`NUXT_PUBLIC_AUTH_MODE=test`) on **3110**, never the dev ports 3001/3010. The build goes to `.nuxt-e2e`/`.output-e2e` (`POLLUX_E2E=1`), so it never clobbers `pnpm dev`. Locally, servers already running on those ports are reused.
+- **Its own database:** global setup drops and recreates **`pollux_e2e`** on the docker-compose Postgres (`E2E_DATABASE_URL` to override; it must be local and its name must contain `e2e`), then applies `db/migrations`. Never `pollux_test`: the API suite drops that one on every run.
+- **Projects:** `phone` (Pixel 7, the default way the app is used) and `desktop`. Every test runs in both; use the `openSidebar` fixture, since on a phone the sidebar is a drawer.
+- **Test sign-in mode:** with `NUXT_PUBLIC_AUTH_MODE=test` the dashboard skips Supabase and the **password is the bearer token**, which the API's test verifier reads as a user id (the API refuses that verifier in production). The login page shows a "Modo de prueba" notice.
+- **Fixtures** (`e2e/fixtures.ts`): `createOwner(...businessNames)` inserts a user and their businesses straight into the DB (no onboarding endpoint exists); `signIn(userId)` goes through `/login`. Everything else goes through the UI and the API. Each test makes its own user and businesses, so tests run in parallel.
+- Locate by role, label and Spanish text, never CSS classes. Toast titles also appear in a hidden live region, so match them with `{ exact: true }`.
+- `test/` holds Vitest unit tests for pure modules only; it runs in a far-west time zone so a date that drifts through UTC fails.
 
 ## Structure and conventions
 
 - **App shell:** `app/layouts/default.vue` wraps every page in `UDashboardGroup` with a collapsible `UDashboardSidebar` and `UNavigationMenu`. **Each page renders one `UDashboardPanel`** with a `UDashboardNavbar` in `#header` and its content in `#body`. To add a section, create the page and add it to the `links` array in the layout.
 - **Routes and UI text are in Spanish** (`/pedidos`, `/clientes`, `/cuentas-corrientes`, `/productos`). `app.vue` passes Nuxt UI's `es` locale to `<UApp>` and sets `lang="es-AR"`. Page titles are set with `useSeoMeta({ title })` and the template appends `· Pollux`.
+- **Auth and business:** `useAuth()` (Supabase session or test mode, restored by `plugins/auth.ts`), `middleware/auth.global.ts` (signed-out users go to `/login?redirect=<path>`; the first navigation loads the user's businesses from `GET /me` and sends users with several and no choice on this device to `/negocio`), `useActiveBusiness()` (the business list and the active one, kept per device in `localStorage`), `useSignOut()`. `/login` and `/negocio` use no layout. The sidebar shows `BusinessSwitcher` only for users with several businesses.
+- **Formatting** (`app/utils/format.ts`, auto-imported): `formatMoney("12345.50")` → `$ 12.345,50` (the decimal string goes straight to `Intl`, never through a float), `formatDate` (`yyyy-mm-dd` → `dd/mm/yyyy` as text, timestamps in Argentina time), `maskCuit` while typing, and `<enum>Labels` with the Spanish name of every enum value. Show values only through these.
 - `SectionPlaceholder.vue` is a temporary empty-state body for sections that aren't built yet. Replace it with real content; don't build on top of it.
 - **Theme:** `app.config.ts` sets `primary: green` and `neutral: slate`, and `assets/css/main.css` overrides the green scale. The Nuxt UI ESLint rules block raw Tailwind palette colors (`no-palette-colors`), so use semantic tokens (`text-primary`, `text-muted`, `bg-elevated`, `border-default`, …) instead of `text-green-500`.
 - **Nuxt UI first.** Build screens from Nuxt UI components (forms, tables, menus, overlays, steppers, dashboard parts, …) and their props, slots and variants. Before writing a custom component, look for one in Nuxt UI (Nuxt UI MCP or `nuxt-ui` skill). Write a custom component only when nothing fits, and compose it from Nuxt UI parts.
@@ -36,4 +64,8 @@ There is no test runner yet.
 
 ## Data access
 
-The dashboard **only talks to `apps/api`**. Don't add Nuxt server routes holding business logic, and don't query Postgres or Supabase tables from here. The plan is to consume the API through Hono's typed RPC client (`hc<AppType>`, see `apps/api/CLAUDE.md`) once the API exists. Supabase Auth on the client side (session handling) may be added later; that's the only expected exception.
+The dashboard **only talks to `apps/api`**. Don't add Nuxt server routes holding business logic, and don't query Postgres or Supabase tables from here. Supabase Auth on the client (sign-in and session, in `useAuth`) is the one exception.
+
+- **`useApi()`** wraps Hono's typed client (`hc<AppType>`, typed from `api/src/app` through a type-only workspace dev dependency) and adds the bearer token and `X-Business-Id` to every request. Call it in setup, then `const data = await request(c => c.me.$get())`: it returns the typed body of the success response, or handles the error and throws `ApiRequestError`.
+- **Errors** arrive as `{ error: { code, message, details? } }` with a Spanish message. `request` maps them: 401 signs out and goes to `/login` (coming back afterwards); 403 and 400 `business_not_selected` go to the business picker; 400 `validation_error` puts `details` on a form's fields when you pass `{ form }` (a `UForm` ref); anything else becomes a toast. Callers only catch `ApiRequestError` to stop their own flow.
+- Route middleware passes `{ navigate: false }` and returns `navigateTo(error.redirectTo)` itself.

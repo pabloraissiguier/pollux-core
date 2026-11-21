@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**pollux-core** is a proof of concept for a management app for small and medium businesses in Argentina (PyMEs). The DB schema is written and applied to Supabase, with Gio Pack demo data seeded. The dashboard is scaffolded (an app shell with placeholder sections). The API is scaffolded (app factory, Supabase auth and business selection, `GET /me`, test harness); the business modules come next.
+**pollux-core** is a proof of concept for a management app for small and medium businesses in Argentina (PyMEs). The DB schema is written and applied to Supabase, with Gio Pack demo data seeded. The dashboard has its foundation (sign-in, the typed API client, the business switcher, formatting, Playwright) and placeholder sections. The API is scaffolded (app factory, Supabase auth and business selection, `GET /me`, test harness); the business modules come next.
 
 The work is planned in two specs on GitHub: **#1 (API)** and **#2 (dashboard)**. Each is split into ticket sub-issues labelled `api` or `dashboard`, linked by native blocked-by relationships. The API is built first. See **Working on tickets** below.
 
@@ -81,6 +81,7 @@ pnpm test:api                       # API tests; needs `docker compose up -d db`
 pnpm dev:dashboard                  # Nuxt dev server on http://localhost:3010
 pnpm build:dashboard
 pnpm --filter dashboard lint        # or typecheck; see apps/dashboard/CLAUDE.md
+pnpm --filter dashboard test:e2e    # Playwright E2E on ports 3101/3110 and DB pollux_e2e; needs `docker compose up -d db`
 pnpm db:generate --name <change>    # new SQL migration from schema changes; see db/CLAUDE.md
 pnpm db:migrate                     # apply pending migrations to Supabase
 pnpm db:seed                        # idempotent Gio Pack demo data; links TEST_USER as owner
@@ -88,7 +89,7 @@ pnpm db:seed                        # idempotent Gio Pack demo data; links TEST_
 
 Copy `.env.example` to `.env` and fill in the Supabase values. The dev DB is remote, so development needs nothing running locally.
 
-`docker-compose.yml` has a local Postgres (port 5433) that **the API test suite uses** (`docker compose up -d db`): the tests recreate a `pollux_test` database there and never touch Supabase. Development still runs against Supabase. The dashboard uses port 3010 because 3000 is taken by other local projects.
+`docker-compose.yml` has a local Postgres (port 5433) that **the test suites use** (`docker compose up -d db`): the API tests recreate a `pollux_test` database there and the dashboard's Playwright run recreates `pollux_e2e`; neither touches Supabase. Development still runs against Supabase. The dashboard uses port 3010 because 3000 is taken by other local projects.
 
 ## Working on tickets
 

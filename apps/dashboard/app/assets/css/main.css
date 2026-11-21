@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+/*
+ * Design tokens for the whole app. Component defaults live in app.config.ts; screens use
+ * semantic tokens (text-muted, bg-elevated, …), never palette colors.
+ */
 @theme static {
   --font-sans: 'Public Sans', sans-serif;
 
@@ -15,4 +19,9 @@
   --color-green-800: #016538;
   --color-green-900: #0A5331;
   --color-green-950: #052E16;
+}
+
+:root {
+  /* Slightly rounder than the default, for a softer touch UI. */
+  --ui-radius: 0.375rem;
 }
