@@ -54,6 +54,7 @@ describe('creating a Product', () => {
       price: '1234.50',
       vatRate: '10.50',
       isActive: true,
+      stock: { onHand: 0, reserved: 0, available: 0 },
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
     })
