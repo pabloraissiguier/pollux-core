@@ -29,10 +29,19 @@ function nameTaken(err: unknown): never {
 const isCategory = (businessId: string, categoryId: string) =>
   and(eq(categories.businessId, businessId), eq(categories.id, categoryId))
 
+/** The Category's id and name; throws `category_not_found` unless it is in this business. */
+export async function getCategory(db: DbOrTx, businessId: string, categoryId: string) {
+  const [found] = await db
+    .select({ id: categories.id, name: categories.name })
+    .from(categories)
+    .where(isCategory(businessId, categoryId))
+  if (!found) throw categoryNotFound()
+  return found
+}
+
 /** Throws `category_not_found` unless the Category is in this business. */
 export async function assertCategory(db: DbOrTx, businessId: string, categoryId: string) {
-  const [found] = await db.select({ id: categories.id }).from(categories).where(isCategory(businessId, categoryId))
-  if (!found) throw categoryNotFound()
+  await getCategory(db, businessId, categoryId)
 }
 
 export async function createCategory(db: Database, businessId: string, input: ValidCategory) {

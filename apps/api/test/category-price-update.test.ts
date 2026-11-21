@@ -133,6 +133,32 @@ describe('applying a Category Price update', () => {
     expect(await getPrice(rollo.id)).toBe('0.00')
   })
 
+  it('keeps no history row for a Price that is the same after rounding', async () => {
+    const category = await createCategory('Sorbetes')
+    // 0.01 × 1.1 = 0.011 → 0.01
+    const sorbete = await createProduct({ code: 'PA-8', name: 'Sorbete', categoryId: category.id, price: '0.01' })
+
+    const res = await post(`/categories/${category.id}/price-update`, { percent: '10' })
+
+    expect(res.status).toBe(200)
+    expect((await res.json()).items).toMatchObject([{ productId: sorbete.id, oldPrice: '0.01', newPrice: '0.01' }])
+    expect(await getPrice(sorbete.id)).toBe('0.01')
+    expect((await getHistory(sorbete.id)).total).toBe(1)
+  })
+
+  it('rejects a percentage above 1000 and a badly written one with a Spanish message', async () => {
+    const category = await createCategory('Guantes')
+
+    const tooHigh = await post(`/categories/${category.id}/price-update`, { percent: '1000.01' })
+    const garbled = await post(`/categories/${category.id}/price-update`, { percent: '10%' })
+
+    expect(tooHigh.status).toBe(400)
+    expect(garbled.status).toBe(400)
+    expect((await garbled.json()).error.details.percent).toEqual([
+      'Ingresá un porcentaje con hasta 2 decimales, por ejemplo 10.50',
+    ])
+  })
+
   it('rejects a percentage that would leave a Price below 0, and writes nothing', async () => {
     const category = await createCategory('Bolsas')
     const bolsa = await createProduct({ code: 'PA-7', name: 'Bolsa camiseta', categoryId: category.id, price: '80.00' })

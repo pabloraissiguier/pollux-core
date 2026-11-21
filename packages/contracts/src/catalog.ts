@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { moneySchema } from './money'
+import { moneySchema, percentSchema } from './money'
 import { paginationSchema } from './pagination'
 
 const requiredText = (max: number, message: string) => z.string().trim().min(1, message).max(max)
@@ -77,9 +77,12 @@ export type PriceHistoryQuery = z.input<typeof priceHistoryQuerySchema>
  * -100, because a Price can't end up negative; at most 1000 (an 11× raise).
  */
 export const categoryPriceUpdateSchema = z.object({
-  percent: moneySchema
-    .refine(v => v !== '0.00' && v !== '-0.00', { message: 'Ingresá un porcentaje distinto de 0' })
-    .refine(v => BigInt(v.replace('.', '')) >= -10_000n, { message: 'El precio no puede quedar negativo: el porcentaje mínimo es -100' })
-    .refine(v => BigInt(v.replace('.', '')) <= 100_000n, { message: 'El porcentaje máximo es 1000' }),
+  percent: percentSchema
+    // `percentSchema` outputs exactly 2 decimals, so dropping the point gives exact hundredths.
+    .transform(v => ({ text: v, hundredths: BigInt(v.replace('.', '')) }))
+    .refine(v => v.hundredths !== 0n, { message: 'Ingresá un porcentaje distinto de 0' })
+    .refine(v => v.hundredths >= -10_000n, { message: 'El precio no puede quedar negativo: el porcentaje mínimo es -100' })
+    .refine(v => v.hundredths <= 100_000n, { message: 'El porcentaje máximo es 1000' })
+    .transform(v => v.text),
 })
 export type CategoryPriceUpdateInput = z.input<typeof categoryPriceUpdateSchema>

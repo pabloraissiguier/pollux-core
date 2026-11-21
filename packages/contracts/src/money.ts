@@ -70,6 +70,12 @@ export function changeByPercent(amount: Money, percent: Percent): Money {
   return fromHundredths(divideRounded(toHundredths(amount) * (10_000n + toHundredths(percent)), 10_000n))
 }
 
+/** A percentage field: a decimal string with up to 2 decimals, output with exactly 2 ("10" → "10.00"). */
+export const percentSchema = z
+  .string()
+  .regex(DECIMAL, { message: 'Ingresá un porcentaje con hasta 2 decimales, por ejemplo 10.50' })
+  .transform(value => fromHundredths(toHundredths(value)))
+
 /** A money field: a decimal string with up to 2 decimals, output with exactly 2 ("7" → "7.00"). */
 export const moneySchema = z
   .string()

@@ -82,11 +82,24 @@ export async function getProduct(db: DbOrTx, businessId: string, productId: stri
  * Keeps a Price change in the Product's price history. `oldPrice` is null for the Price a
  * Product was created with. Call it in the transaction that writes the new Price.
  */
-export async function recordPriceChange(
+async function recordPriceChange(
   tx: Transaction,
   change: { businessId: string, productId: string, oldPrice: string | null, newPrice: string, changedBy: string },
 ) {
   await tx.insert(productPriceChanges).values(change)
+}
+
+/**
+ * Sets a Product's Price and keeps the change in its price history. Call it inside a
+ * transaction that has locked the Product row and read `oldPrice` under that lock.
+ */
+export async function changePrice(
+  tx: Transaction,
+  change: { businessId: string, productId: string, oldPrice: string, newPrice: string, changedBy: string },
+) {
+  const { businessId, productId, newPrice } = change
+  await tx.update(products).set({ price: newPrice, updatedAt: sql`now()` }).where(isProduct(businessId, productId))
+  await recordPriceChange(tx, change)
 }
 
 /** Registers an Active Product and the first row of its price history, in one transaction. */
