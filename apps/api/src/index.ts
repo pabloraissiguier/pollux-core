@@ -20,7 +20,7 @@ const verifyToken = env.API_AUTH_VERIFIER === 'test'
   ? createTestVerifier()
   : createSupabaseVerifier(env.SUPABASE_URL)
 
-const app = createApp({ db, verifyToken })
+const app = createApp({ db, verifyToken, corsOrigins: env.API_CORS_ORIGINS })
 
 export default app
 export type { AppType } from './app'
