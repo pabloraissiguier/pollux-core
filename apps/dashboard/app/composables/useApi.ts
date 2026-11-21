@@ -39,7 +39,6 @@ export interface ApiRequestOptions {
 
 /** The typed Hono client of apps/api, e.g. for `InferResponseType<ApiClient['me']['$get'], 200>`. */
 export type ApiClient = ReturnType<typeof hc<AppType>>
-type Client = ApiClient
 /** The body of the successful responses of an endpoint. */
 type SuccessBody<R> = R extends ClientResponse<infer T, infer S, 'json'> ? (S extends 200 | 201 ? T : never) : never
 
@@ -110,7 +109,7 @@ export function useApi() {
   }
 
   async function request<R extends ClientResponse<unknown, number, 'json'>>(
-    call: (client: Client) => Promise<R>,
+    call: (client: ApiClient) => Promise<R>,
     options: ApiRequestOptions = {}
   ): Promise<SuccessBody<R>> {
     let res: R

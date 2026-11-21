@@ -60,9 +60,9 @@ const { data: towns } = await useAsyncData('clientes-localidades', async () => {
   return [...names.values()].sort((a, b) => a.localeCompare(b, 'es-AR'))
 }, { default: () => [] })
 
-const filtered = computed(() => !!searchedText.value || !!town.value)
+const hasFilters = computed(() => !!searchedText.value || !!town.value)
 
-function describe(customer: Customer) {
+function customerSubtitle(customer: Customer) {
   return [customerTowns(customer).join(', '), customer.cuit].filter(Boolean).join(' · ')
 }
 </script>
@@ -122,7 +122,7 @@ function describe(customer: Customer) {
       />
 
       <UEmpty
-        v-else-if="!customers?.items.length && filtered"
+        v-else-if="!customers?.items.length && hasFilters"
         icon="i-lucide-search-x"
         title="No encontramos clientes"
         description="Probá con otro nombre, CUIT o localidad."
@@ -148,7 +148,7 @@ function describe(customer: Customer) {
           >
             <span class="flex min-w-0 flex-col">
               <span class="truncate font-medium text-highlighted">{{ customer.name }}</span>
-              <span class="truncate text-sm text-muted">{{ describe(customer) }}</span>
+              <span class="truncate text-sm text-muted">{{ customerSubtitle(customer) }}</span>
             </span>
             <UIcon
               name="i-lucide-chevron-right"
