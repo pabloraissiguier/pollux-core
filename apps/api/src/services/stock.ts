@@ -3,7 +3,7 @@ import { orders, products, profiles, purchases, stockMovements } from '@pollux/d
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Database, Transaction } from '../db'
-import { getProduct, productNotFound } from './products'
+import { getProduct, isProduct, productNotFound } from './products'
 
 type ValidStockAdjustment = z.output<typeof stockAdjustmentSchema>
 type ValidInitialCount = z.output<typeof initialCountSchema>
@@ -48,7 +48,7 @@ export async function recordStockMovements(tx: Transaction, businessId: string, 
     await tx
       .update(products)
       .set({ stockOnHand: sql`${products.stockOnHand} + ${quantity}` })
-      .where(and(eq(products.businessId, businessId), eq(products.id, productId)))
+      .where(isProduct(businessId, productId))
   }
 }
 
@@ -77,9 +77,9 @@ export async function adjustStock(db: Database, businessId: string, profileId: s
 export async function recordInitialCount(db: Database, businessId: string, profileId: string, input: ValidInitialCount) {
   return db.transaction(async (tx) => {
     const onHand = await lockProducts(tx, businessId, input.items.map(i => i.productId))
-    const counted = input.items.map(({ productId, quantity }) => ({ productId, difference: quantity - onHand.get(productId)! }))
+    const differences = input.items.map(({ productId, quantity }) => ({ productId, difference: quantity - onHand.get(productId)! }))
 
-    await recordStockMovements(tx, businessId, counted
+    await recordStockMovements(tx, businessId, differences
       .filter(c => c.difference !== 0)
       .map(c => ({
         type: 'adjustment' as const,
@@ -90,7 +90,7 @@ export async function recordInitialCount(db: Database, businessId: string, profi
       })))
 
     const items = []
-    for (const { productId, difference } of counted) {
+    for (const { productId, difference } of differences) {
       items.push({ product: await getProduct(tx, businessId, productId), difference })
     }
     return { items }
@@ -107,7 +107,7 @@ export async function listStockMovements(db: Database, businessId: string, query
   const [product] = await db
     .select({ id: products.id })
     .from(products)
-    .where(and(eq(products.businessId, businessId), eq(products.id, productId)))
+    .where(isProduct(businessId, productId))
   if (!product) throw productNotFound()
 
   const where = and(eq(stockMovements.businessId, businessId), eq(stockMovements.productId, productId))

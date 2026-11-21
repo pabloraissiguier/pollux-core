@@ -83,7 +83,7 @@ function codeTaken(err: unknown): never {
   throw err
 }
 
-const isProduct = (businessId: string, productId: string) =>
+export const isProduct = (businessId: string, productId: string) =>
   and(eq(products.businessId, businessId), eq(products.id, productId))
 
 /** Products joined to their Category, in this business. */
