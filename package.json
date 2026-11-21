@@ -10,6 +10,7 @@
     "dev:dashboard": "pnpm --filter dashboard dev",
     "build:dashboard": "pnpm --filter dashboard build",
     "db:generate": "pnpm --filter @pollux/db generate",
-    "db:migrate": "pnpm --filter @pollux/db migrate"
+    "db:migrate": "pnpm --filter @pollux/db migrate",
+    "db:seed": "pnpm --filter @pollux/db seed"
   }
 }

@@ -214,6 +214,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(postgres@4.1.1)
+      postgres:
+        specifier: ^4.1.1
+        version: 4.1.1
     devDependencies:
       '@types/node':
         specifier: ^24.19.2
@@ -221,6 +224,9 @@ importers:
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -9845,8 +9851,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.4
 
-  postgres@4.1.1:
-    optional: true
+  postgres@4.1.1: {}
 
   powershell-utils@0.2.1: {}
 

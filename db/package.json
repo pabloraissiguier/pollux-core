@@ -9,14 +9,17 @@
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
     "check": "drizzle-kit check",
+    "seed": "tsx seeds/seed.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.4"
+    "drizzle-orm": "^0.45.4",
+    "postgres": "^4.1.1"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   }
 }

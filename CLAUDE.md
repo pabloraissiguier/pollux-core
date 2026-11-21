@@ -79,6 +79,7 @@ pnpm build:dashboard
 pnpm --filter dashboard lint        # or typecheck; see apps/dashboard/CLAUDE.md
 pnpm db:generate --name <change>    # new SQL migration from schema changes; see db/CLAUDE.md
 pnpm db:migrate                     # apply pending migrations to Supabase
+pnpm db:seed                        # idempotent Gio Pack demo data; links TEST_USER as owner
 ```
 
 Copy `.env.example` to `.env` and fill in the Supabase values. The DB is remote, so there's nothing to start locally.
