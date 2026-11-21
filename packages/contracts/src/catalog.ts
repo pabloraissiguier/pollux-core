@@ -70,3 +70,16 @@ export type ProductListQuery = z.input<typeof productListQuerySchema>
 
 export const priceHistoryQuerySchema = paginationSchema
 export type PriceHistoryQuery = z.input<typeof priceHistoryQuerySchema>
+
+/**
+ * Actualización de precios por categoría: every Active Product in the Category changes by
+ * `percent` (a decimal string; negative lowers prices). It can't be 0, and it can't go below
+ * -100, because a Price can't end up negative; at most 1000 (an 11× raise).
+ */
+export const categoryPriceUpdateSchema = z.object({
+  percent: moneySchema
+    .refine(v => v !== '0.00' && v !== '-0.00', { message: 'Ingresá un porcentaje distinto de 0' })
+    .refine(v => BigInt(v.replace('.', '')) >= -10_000n, { message: 'El precio no puede quedar negativo: el porcentaje mínimo es -100' })
+    .refine(v => BigInt(v.replace('.', '')) <= 100_000n, { message: 'El porcentaje máximo es 1000' }),
+})
+export type CategoryPriceUpdateInput = z.input<typeof categoryPriceUpdateSchema>

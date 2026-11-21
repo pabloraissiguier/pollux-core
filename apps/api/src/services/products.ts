@@ -82,7 +82,7 @@ export async function getProduct(db: DbOrTx, businessId: string, productId: stri
  * Keeps a Price change in the Product's price history. `oldPrice` is null for the Price a
  * Product was created with. Call it in the transaction that writes the new Price.
  */
-async function recordPriceChange(
+export async function recordPriceChange(
   tx: Transaction,
   change: { businessId: string, productId: string, oldPrice: string | null, newPrice: string, changedBy: string },
 ) {

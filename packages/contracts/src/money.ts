@@ -65,6 +65,11 @@ export function applyDiscount(amount: Money, percent: Percent): Money {
   return fromHundredths(divideRounded(toHundredths(amount) * (10_000n - toHundredths(percent)), 10_000n))
 }
 
+/** `amount × (1 + percent / 100)`, rounded half-up to cents. A negative `percent` lowers it. */
+export function changeByPercent(amount: Money, percent: Percent): Money {
+  return fromHundredths(divideRounded(toHundredths(amount) * (10_000n + toHundredths(percent)), 10_000n))
+}
+
 /** A money field: a decimal string with up to 2 decimals, output with exactly 2 ("7" → "7.00"). */
 export const moneySchema = z
   .string()
