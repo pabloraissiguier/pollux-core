@@ -136,6 +136,32 @@ export async function updateBranch(
   })
 }
 
+const spanish = new Intl.Collator('es-AR')
+
+/**
+ * The business's Localidades: each distinct `city` of its Branches once, in es-AR order.
+ * Spellings that differ only in case are one town, shown as its most used spelling
+ * (ties go to the one that sorts first). Sorted here, not in SQL, so the order doesn't
+ * depend on the database's collation.
+ */
+export async function listTowns(db: DbOrTx, businessId: string) {
+  const rows = await db
+    .select({ city: branches.city, uses: count() })
+    .from(branches)
+    .where(eq(branches.businessId, businessId))
+    .groupBy(branches.city)
+
+  const byTown = new Map<string, { city: string, uses: number }>()
+  for (const row of rows) {
+    const key = row.city.toLocaleLowerCase('es-AR')
+    const best = byTown.get(key)
+    if (!best || row.uses > best.uses || (row.uses === best.uses && spanish.compare(row.city, best.city) < 0)) {
+      byTown.set(key, row)
+    }
+  }
+  return { items: [...byTown.values()].map(t => t.city).sort(spanish.compare) }
+}
+
 /** Escapes `%`, `_` and `\` so user text matches literally inside a LIKE pattern. */
 function likeContains(text: string) {
   return `%${text.replace(/[\\%_]/g, c => `\\${c}`)}%`

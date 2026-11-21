@@ -14,6 +14,7 @@ import {
   createCustomer,
   getCustomer,
   listCustomers,
+  listTowns,
   updateBranch,
   updateCustomer,
 } from '../services/customers'
@@ -30,6 +31,10 @@ export const customerRoutes = new Hono<AppEnv>()
   .use(requireBusiness)
   .get('/', validate('query', customerListQuerySchema), async (c) => {
     return c.json(await listCustomers(c.var.db, c.var.businessId, c.req.valid('query')), 200)
+  })
+  // Before `/:id`, so "towns" is never read as a Customer id.
+  .get('/towns', async (c) => {
+    return c.json(await listTowns(c.var.db, c.var.businessId), 200)
   })
   .post('/', validate('json', customerCreateSchema), async (c) => {
     const customer = await createCustomer(c.var.db, c.var.businessId, c.req.valid('json'))
