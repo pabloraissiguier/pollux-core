@@ -1,0 +1,2 @@
+# Gitignored files copied into the git worktrees that Claude Code agents work in.
+.env

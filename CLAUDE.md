@@ -99,6 +99,15 @@ Copy `.env.example` to `.env` and fill in the Supabase values. The dev DB is rem
 - **Keep the docs true.** When a ticket adds commands, env vars or conventions, update the relevant `CLAUDE.md` in the same PR. When it settles a domain term or a hard-to-reverse decision, update `GLOSSARY.md` or add an ADR.
 - **Scope creep becomes a new ticket.** Work found along the way that isn't in the ticket becomes a new issue linked to the parent spec, not extra changes in the current PR.
 
+## Agents
+
+Tickets are built by two project agents (`.claude/agents/`), each on Opus 5.5 at medium effort, in its own git worktree, one ticket at a time, ending in a PR written in Spanish with every acceptance criterion checked:
+
+- **`api-developer`** takes every ticket labelled `api`.
+- **`dashboard-developer`** takes every ticket labelled `dashboard`.
+
+To build tickets, dispatch them through the `work-tickets` skill (`/work-tickets`, or `/work-tickets 4 14`) rather than implementing them in the main session. Both agents follow the `ticket-workflow` skill. Change it there, not in the agent definitions.
+
 ## Agent skills
 
 ### Issue tracker
