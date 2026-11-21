@@ -1,3 +1,4 @@
+import { ORDER_STATUSES } from '@pollux/contracts'
 import { sql } from 'drizzle-orm'
 import { check, date, foreignKey, index, integer, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
 import { app, businessId, createdAt, id, money, percent, updatedAt } from './_shared'
@@ -5,7 +6,7 @@ import { branches, customers } from './customers'
 import { products } from './catalog'
 import { businesses, profiles } from './tenancy'
 
-export const orderStatus = app.enum('order_status', ['pending', 'delivered', 'cancelled'])
+export const orderStatus = app.enum('order_status', ORDER_STATUSES)
 
 /**
  * Pedido. Delivery is a state, not a separate entity (docs/adr/0002).
