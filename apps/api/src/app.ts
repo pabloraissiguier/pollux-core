@@ -6,7 +6,9 @@ import type { AuthVerifier } from './auth/verifier'
 import type { AppEnv } from './context'
 import type { Database } from './db'
 import { handleError, handleNotFound } from './errors'
+import { categoryRoutes } from './routes/categories'
 import { meRoutes } from './routes/me'
+import { productRoutes } from './routes/products'
 
 // Zod's built-in validation messages in Spanish.
 z.config(z.locales.es())
@@ -42,6 +44,8 @@ export function createApp({ db, verifyToken, corsOrigins }: AppDeps) {
     })
     .use(session(verifyToken))
     .route('/me', meRoutes)
+    .route('/categories', categoryRoutes)
+    .route('/products', productRoutes)
 
   app.onError(handleError)
   app.notFound(handleNotFound)

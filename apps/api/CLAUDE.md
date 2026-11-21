@@ -37,6 +37,12 @@ The suite builds its own app and never reads `DATABASE_URL`; the vitest config r
 - `src/routes/<module>.ts`: one Hono sub-router per module, mounted in `createApp`.
 - **CORS** runs before the session, so a preflight `OPTIONS` never needs a token, and error responses (401, 403, 400, 404) carry the CORS headers so the dashboard can read `{ error }`. Allowed origins come from **`API_CORS_ORIGINS`** (comma-separated, exact match, default `http://localhost:3010`) in `src/env.ts`; an unlisted origin gets no `Access-Control-Allow-Origin`. Allowed headers: `Authorization`, `Content-Type`, `X-Business-Id`; methods: GET, POST, PUT, PATCH, DELETE. When the dashboard runs on a new origin (a Playwright port, a Vercel domain), add it to the variable. Tests pass origins directly: `setupTestApp({ corsOrigins })`.
 - `src/errors.ts`: `ApiError` and the error handler. `src/validator.ts`: `validate(target, schema)`, the `zValidator` wrapper to use for every request schema.
+- `src/pg-errors.ts`: `isUniqueViolation(err, constraint)`. Turn a per-business unique constraint into a 409 by catching the write (`.catch(...)`) and checking the constraint name, rather than checking first (two requests can race).
+- **Catalog** (`routes/categories.ts`, `routes/products.ts`, services of the same names):
+  - `/categories`: list, create, `PATCH /:id` rename. A name that is already taken is 409 `category_name_taken`.
+  - `/products`: list (`q` matches name, Code or Brand; `categoryId`; `active=true|false`, both when left out), create, detail, `PATCH /:id`. A Code that is already taken is 409 `product_code_taken`, and a missing or other-tenant Category is 404 `category_not_found`.
+  - **No delete:** `PATCH { isActive: false }` makes a Product Inactive, and `true` reactivates it.
+  - **Price changes go through `PATCH { price }`:** the Product row is locked `FOR UPDATE`, and when the Price differs, one `product_price_changes` row (old, new, who) is written in the same transaction. Creating a Product writes its first row (`oldPrice: null`). `GET /products/:id/price-history` lists them newest first, with `changedBy: { id, fullName }`. Category Price updates should write their history through the same `recordPriceChange` in `services/products.ts`.
 - `test/`: `global-setup.ts` prepares the test DB; `fixtures.ts` has `setupTestApp({ corsOrigins? })` (users, businesses, `request(path, { as, businessId })`).
 
 ## Stack
