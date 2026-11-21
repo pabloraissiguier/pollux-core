@@ -4,14 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**pollux-core** is a proof of concept for a management app for small and medium businesses in Argentina (PyMEs). The folder layout and local Postgres are set up, but no app has been scaffolded yet and there is no git repo. When the apps are scaffolded, add their real commands (dev, build, lint, test, running a single test, DB migrations) to the "Commands" section below.
+**pollux-core** is a proof of concept for a management app for small and medium businesses in Argentina (PyMEs). The dashboard is scaffolded (an app shell with placeholder sections). The API and the DB schema are not written yet.
+
+Each part has its own `CLAUDE.md` with its stack, commands and conventions: `apps/api/`, `apps/dashboard/`, `db/`. Keep details there; this file covers only what applies across the whole repo.
 
 ## Repository layout
 
+This is a **pnpm workspace** (`pnpm-workspace.yaml`: `apps/*`, `packages/*`). pnpm build-script approvals (`allowBuilds`) live in the root `pnpm-workspace.yaml`, not in the individual apps.
+
 ```
-apps/api/         Node API (framework still open): business logic and the only thing that talks to the DB
-apps/dashboard/   Nuxt + Nuxt UI frontend; calls apps/api and never touches the DB directly
-db/migrations/    SQL schema migrations, applied in order (tool not chosen yet)
+apps/api/         Node API: business logic and the only thing that talks to the DB (not scaffolded yet)
+apps/dashboard/   Nuxt 4 + Nuxt UI v4 frontend; calls apps/api and never touches the DB directly
+packages/         Shared workspace packages, e.g. Zod schemas used by both apps (none yet)
+db/migrations/    SQL schema migrations, applied in order
 db/seeds/         Dev and demo data (e.g. a Gio Pack-like catalog and customers)
 docker/           Dockerfiles and local-env support files (e.g. api.Dockerfile, dashboard.Dockerfile)
 docs/             Product and architecture docs (domain notes, ADRs)
@@ -19,19 +24,18 @@ docker-compose.yml  Local environment. Only `db` (Postgres 17) is active; `api` 
 .env.example      Env vars shared by compose and the apps; copy to `.env`
 ```
 
-The schema belongs in `db/`, not inside `apps/api`, so it stays independent of the API framework (and of Supabase, if that gets chosen).
+The schema belongs in `db/`, not inside `apps/api`, so it stays independent of the API framework and of the DB host.
 
-## Planned stack (decided)
+## Stack (decided)
 
-- **Frontend:** the latest Nuxt, with **Nuxt UI** as the component library. Use Nuxt UI components before writing custom ones.
-- **Backend:** a REST/JSON API built on a Node framework (which framework is still open), kept separate from the Nuxt app.
-- **Database:** PostgreSQL.
+- **Frontend:** Nuxt 4 with **Nuxt UI v4**. Use Nuxt UI components before writing custom ones. See `apps/dashboard/CLAUDE.md`.
+- **Backend:** a separate Node API. See `apps/api/CLAUDE.md`.
+- **Database:** a **remote Supabase project** (Postgres 17 plus Supabase Auth), used for all of development; there is no local DB. **Multi-tenant**: many businesses share the database, and Gio Pack is the first. The schema must stay portable to self-hosted Postgres. See `db/CLAUDE.md`.
 
 ## Still open (don't treat these as decided)
 
-- Whether Postgres is hosted on Supabase or plain Postgres. Keep data access behind a layer that doesn't depend on Supabase-only features (RLS, Supabase Auth, Edge Functions) unless the user chooses Supabase.
+- A possible move to self-hosted Postgres, and whether Supabase Auth stays. Neither is planned yet.
 - Infrastructure and deployment. Vercel's free tier is being considered for the POC, so avoid designs that need long-running processes, background workers or persistent local disk unless asked.
-- Repo layout (monorepo or separate repos) and the Node API framework.
 
 ## Domain context
 
@@ -65,14 +69,15 @@ Invoicing (facturación) is done today through the **ARCA** portal (formerly AFI
 
 ## Commands
 
-Local environment (from the repo root):
+pnpm is pinned through `packageManager` in the root `package.json`. Run `corepack enable` once (or call `corepack pnpm …`).
 
 ```bash
-cp .env.example .env                # first time only
-docker compose up -d db             # start Postgres on localhost:5432 (user/pass/db: pollux)
-docker compose logs -f db
-docker compose exec db psql -U pollux -d pollux
-docker compose down                 # stop (add -v to wipe the DB volume)
+pnpm install                        # from the root, installs every workspace
+pnpm dev:dashboard                  # Nuxt dev server on http://localhost:3010
+pnpm build:dashboard
+pnpm --filter dashboard lint        # or typecheck; see apps/dashboard/CLAUDE.md
 ```
 
-App commands: none yet. Add them here once `apps/api` and `apps/dashboard` are scaffolded.
+Copy `.env.example` to `.env` and fill in the Supabase values. The DB is remote, so there's nothing to start locally.
+
+`docker-compose.yml` only has a local Postgres (port 5433), kept for a possible future self-hosted setup; it isn't part of the current workflow. The dashboard uses port 3010 because 3000 is taken by other local projects.
