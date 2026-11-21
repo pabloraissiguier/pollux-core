@@ -1,3 +1,4 @@
+import { PAYMENT_METHODS } from '@pollux/contracts'
 import { sql } from 'drizzle-orm'
 import { check, date, foreignKey, index, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
 import { app, businessId, createdAt, id, money } from './_shared'
@@ -6,7 +7,7 @@ import { orders } from './orders'
 import { businesses, profiles } from './tenancy'
 
 /** Medio de pago. "On account" is not a method: it means no Payment was recorded (docs/adr/0001). */
-export const paymentMethod = app.enum('payment_method', ['cash', 'bank_transfer', 'check', 'other'])
+export const paymentMethod = app.enum('payment_method', PAYMENT_METHODS)
 
 /**
  * Pago. Lowers the customer's Balance as a whole and is never allocated to an Order.
