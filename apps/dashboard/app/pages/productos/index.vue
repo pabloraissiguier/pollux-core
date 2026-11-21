@@ -163,9 +163,29 @@ function productSubtitle(product: Product) {
             <span class="flex min-w-0 flex-col">
               <span class="truncate font-medium text-highlighted">{{ product.name }}</span>
               <span class="truncate text-sm text-muted">{{ productSubtitle(product) }}</span>
+              <span class="truncate text-sm text-muted tabular-nums">
+                Físico {{ formatUnits(product.stock.onHand) }} · Reservado {{ formatUnits(product.stock.reserved) }}
+              </span>
             </span>
             <span class="flex shrink-0 flex-col items-end gap-1">
               <span class="font-medium text-highlighted tabular-nums">{{ formatMoney(product.price) }}</span>
+              <span
+                class="flex items-center gap-1 text-sm tabular-nums"
+                :class="product.stock.available < 0 ? 'font-semibold text-error' : 'text-muted'"
+              >
+                <span
+                  v-if="product.stock.available < 0"
+                  role="img"
+                  aria-label="Stock disponible negativo"
+                  class="flex"
+                >
+                  <UIcon
+                    name="i-lucide-triangle-alert"
+                    class="size-4"
+                  />
+                </span>
+                Disponible {{ formatUnits(product.stock.available) }}
+              </span>
               <UBadge
                 v-if="!product.isActive"
                 label="Inactivo"
