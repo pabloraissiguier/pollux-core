@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { hc } from 'hono/client'
+import { afterAll, beforeAll, describe, expect, expectTypeOf, it } from 'vitest'
+import type { AppType } from '../src/app'
 import { setupTestApp } from './fixtures'
 
 const t = setupTestApp()
@@ -437,5 +439,80 @@ describe('listing Customers', () => {
 
     expect(res.status).toBe(400)
     expect((await res.json()).error.details).toHaveProperty('limit')
+  })
+})
+
+describe('the business\'s Localidades (towns)', () => {
+  // Its own business, so only these Branches' towns are listed.
+  let townsOwner: { userId: string, businessId: string }
+
+  function towns(as: string) {
+    return t.request('/customers/towns', { as })
+  }
+
+  beforeAll(async () => {
+    townsOwner = await t.createOwnedBusiness('Distribuidora Localidades')
+    const customers = [
+      { name: 'Almacén Uno', branches: [{ address: 'A 1', city: 'Corral de Bustos' }, { address: 'A 2', city: 'Leones' }] },
+      { name: 'Almacén Dos', branches: [{ address: 'B 1', city: 'corral de bustos' }] },
+      { name: 'Almacén Tres', branches: [{ address: 'C 1', city: 'Corral de Bustos' }, { address: 'C 2', city: 'Ñanducita' }] },
+      { name: 'Almacén Cuatro', branches: [{ address: 'D 1', city: 'Árbol Chato' }, { address: 'D 2', city: 'Ordóñez' }] },
+      { name: 'Almacén Cinco', branches: [{ address: 'E 1', city: 'Bell Ville' }, { address: 'E 2', city: 'LEONES' }] },
+    ]
+    for (const body of customers) {
+      const res = await t.request('/customers', { as: townsOwner.userId, method: 'POST', body: JSON.stringify(body) })
+      expect(res.status).toBe(201)
+    }
+  })
+
+  it('lists each town of the business\'s Branches once, in Spanish alphabetical order', async () => {
+    const res = await towns(townsOwner.userId)
+
+    expect(res.status).toBe(200)
+    const { items } = await res.json()
+    // Á sorts with A and Ñ between N and O, as a Spanish reader expects.
+    expect(items).toHaveLength(6)
+    expect(items.map((town: string) => town.toLowerCase()))
+      .toEqual(['árbol chato', 'bell ville', 'corral de bustos', 'leones', 'ñanducita', 'ordóñez'])
+  })
+
+  it('merges spellings that differ only in case, showing the most used one', async () => {
+    const { items } = await (await towns(townsOwner.userId)).json()
+
+    // 'Corral de Bustos' twice, 'corral de bustos' once.
+    expect(items).toContain('Corral de Bustos')
+    expect(items).not.toContain('corral de bustos')
+  })
+
+  it('lists only the active business\'s towns', async () => {
+    const stranger = await t.createOwnedBusiness('Otra distribuidora de localidades')
+    const res = await t.request('/customers', {
+      as: stranger.userId,
+      method: 'POST',
+      body: JSON.stringify({ name: 'Cliente ajeno', branches: [{ address: 'Lejos 1', city: 'Rosario' }] }),
+    })
+    expect(res.status).toBe(201)
+
+    expect(await (await towns(stranger.userId)).json()).toEqual({ items: ['Rosario'] })
+    expect((await (await towns(townsOwner.userId)).json()).items).not.toContain('Rosario')
+  })
+
+  it('is typed for the dashboard\'s hc client as { items: string[] }', async () => {
+    const client = hc<AppType>('http://localhost', {
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => t.app.request(input, init),
+      headers: { Authorization: `Bearer ${townsOwner.userId}` },
+    })
+
+    const res = await client.customers.towns.$get()
+    const body = await res.json()
+
+    expectTypeOf(body).toEqualTypeOf<{ items: string[] }>()
+    expect(body.items).toContain('Leones')
+  })
+
+  it('is empty for a business with no Customers yet', async () => {
+    const empty = await t.createOwnedBusiness('Distribuidora sin clientes')
+
+    expect(await (await towns(empty.userId)).json()).toEqual({ items: [] })
   })
 })
