@@ -40,7 +40,7 @@ Read the ticket and its parent spec (#1 API, #2 dashboard): the spec holds the d
 
 Use the `tdd` skill. The seams are already agreed in the root `CLAUDE.md` (API: HTTP through the app factory against the local test Postgres; dashboard: Playwright E2E), so start the red → green loop without asking for confirmation. Work in vertical slices, one acceptance criterion at a time. Run single test files as you go and the full suite at the end.
 
-Work found along the way that isn't in the ticket becomes a new issue (`gh issue create --parent <spec> --label <side>`), linked as a blocker where it blocks something. It stays out of this PR.
+Work found along the way that isn't in the ticket becomes a new issue, labelled with its side, made a sub-issue of the spec, and linked as a blocker where it blocks something. It stays out of this PR. The installed `gh` (2.89) has no `--parent` or `--add-blocked-by` flags, so use the `gh api` forms in `docs/agents/issue-tracker.md`.
 
 ## 5. Done means
 
