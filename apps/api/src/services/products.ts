@@ -4,7 +4,7 @@ import type {
   productListQuerySchema,
   productUpdateSchema,
 } from '@pollux/contracts'
-import { categories, productPriceChanges, products, profiles } from '@pollux/db/schema'
+import { categories, orderLines, orders, productPriceChanges, products, profiles } from '@pollux/db/schema'
 import { and, asc, count, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Database, DbOrTx, Transaction } from '../db'
@@ -17,6 +17,21 @@ type ValidProductUpdate = z.output<typeof productUpdateSchema>
 type ValidProductListQuery = z.output<typeof productListQuerySchema>
 type ValidPriceHistoryQuery = z.output<typeof priceHistoryQuerySchema>
 
+/**
+ * Stock reservado: the quantities on lines of Pending Orders for the Product in the outer query.
+ * Derived on every read, never stored.
+ */
+function reservedStock() {
+  return sql<number>`(
+    select coalesce(sum(${orderLines.quantity}), 0)::int
+    from ${orderLines}
+    join ${orders} on ${orders.businessId} = ${orderLines.businessId} and ${orders.id} = ${orderLines.orderId}
+    where ${orderLines.businessId} = ${products.businessId}
+      and ${orderLines.productId} = ${products.id}
+      and ${orders.status} = 'pending'
+  )`.mapWith(Number)
+}
+
 const productColumns = {
   id: products.id,
   code: products.code,
@@ -27,15 +42,21 @@ const productColumns = {
   price: products.price,
   vatRate: products.vatRate,
   isActive: products.isActive,
+  stockOnHand: products.stockOnHand,
+  stockReserved: reservedStock(),
   createdAt: products.createdAt,
   updatedAt: products.updatedAt,
 }
 
 type ProductRow = Awaited<ReturnType<typeof selectProducts>>[number]
 
-/** The Product as the API shows it: its Category nested as `{ id, name }` or null. */
+/**
+ * The Product as the API shows it: its Category nested as `{ id, name }` or null, and its On-hand,
+ * Reserved and Available stock.
+ */
 function toProduct(row: ProductRow) {
-  const { id, code, name, brand, categoryId, categoryName, price, vatRate, isActive, createdAt, updatedAt } = row
+  const { id, code, name, brand, categoryId, categoryName, price, vatRate, isActive, stockOnHand, stockReserved } = row
+  const { createdAt, updatedAt } = row
   return {
     id,
     code,
@@ -45,12 +66,14 @@ function toProduct(row: ProductRow) {
     price,
     vatRate,
     isActive,
+    // Stock disponible may go negative: Orders are never blocked for lack of stock.
+    stock: { onHand: stockOnHand, reserved: stockReserved, available: stockOnHand - stockReserved },
     createdAt,
     updatedAt,
   }
 }
 
-const productNotFound = () => new ApiError(404, 'product_not_found', 'No encontramos el producto')
+export const productNotFound = () => new ApiError(404, 'product_not_found', 'No encontramos el producto')
 
 /** Turns the per-business unique Code violation into a 409; rethrows anything else. */
 function codeTaken(err: unknown): never {
@@ -60,7 +83,7 @@ function codeTaken(err: unknown): never {
   throw err
 }
 
-const isProduct = (businessId: string, productId: string) =>
+export const isProduct = (businessId: string, productId: string) =>
   and(eq(products.businessId, businessId), eq(products.id, productId))
 
 /** Products joined to their Category, in this business. */

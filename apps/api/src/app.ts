@@ -10,6 +10,7 @@ import { categoryRoutes } from './routes/categories'
 import { customerRoutes } from './routes/customers'
 import { meRoutes } from './routes/me'
 import { productRoutes } from './routes/products'
+import { stockRoutes } from './routes/stock'
 
 // Zod's built-in validation messages in Spanish.
 z.config(z.locales.es())
@@ -48,6 +49,7 @@ export function createApp({ db, verifyToken, corsOrigins }: AppDeps) {
     .route('/customers', customerRoutes)
     .route('/categories', categoryRoutes)
     .route('/products', productRoutes)
+    .route('/stock', stockRoutes)
 
   app.onError(handleError)
   app.notFound(handleNotFound)
