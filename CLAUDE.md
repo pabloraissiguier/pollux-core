@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**pollux-core** is a proof of concept for a management app for small and medium businesses in Argentina (PyMEs). The dashboard is scaffolded (an app shell with placeholder sections). The API and the DB schema are not written yet.
+**pollux-core** is a proof of concept for a management app for small and medium businesses in Argentina (PyMEs). The DB schema is written and applied to Supabase, with Gio Pack demo data seeded. The dashboard is scaffolded (an app shell with placeholder sections). The API is not scaffolded yet.
+
+The work is planned in two specs on GitHub: **#1 (API)** and **#2 (dashboard)**. Each is split into ticket sub-issues labelled `api` or `dashboard`, linked by native blocked-by relationships. The API is built first. See **Working on tickets** below.
 
 Each part has its own `CLAUDE.md` with its stack, commands and conventions: `apps/api/`, `apps/dashboard/`, `db/`. Keep details there; this file covers only what applies across the whole repo.
 
@@ -85,6 +87,15 @@ pnpm db:seed                        # idempotent Gio Pack demo data; links TEST_
 Copy `.env.example` to `.env` and fill in the Supabase values. The DB is remote, so there's nothing to start locally.
 
 `docker-compose.yml` only has a local Postgres (port 5433), kept for a possible future self-hosted setup; it isn't part of the current workflow. The dashboard uses port 3010 because 3000 is taken by other local projects.
+
+## Working on tickets
+
+- **Pick from the frontier.** Take an open ticket labelled `ready-for-agent` whose blockers are all closed. Read the ticket and its parent spec (#1 or #2) before starting; the spec holds the decisions the ticket depends on.
+- **One ticket, one branch, one PR.** Branch from up-to-date `main` (e.g. `api/3-foundation`, `dashboard/14-foundation`). Open a PR whose body says `Closes #<n>`. Don't bundle several tickets into one PR, and don't commit to `main` directly.
+- **Test-first** (`/tdd`): write a failing test at the ticket's seam, make it pass, then refactor. The API seam is HTTP through the app factory against the local test Postgres; the dashboard seam is Playwright E2E. Test behavior, not internals.
+- **Done means** every acceptance criterion is checked, the tests pass, and lint and typecheck pass for every workspace the ticket touched. If a criterion turns out to be wrong or impossible, say so in the PR and on the ticket instead of silently skipping it.
+- **Keep the docs true.** When a ticket adds commands, env vars or conventions, update the relevant `CLAUDE.md` in the same PR. When it settles a domain term or a hard-to-reverse decision, update `GLOSSARY.md` or add an ADR.
+- **Scope creep becomes a new ticket.** Work found along the way that isn't in the ticket becomes a new issue linked to the parent spec, not extra changes in the current PR.
 
 ## Agent skills
 
