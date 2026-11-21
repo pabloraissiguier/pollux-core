@@ -14,14 +14,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
   if (!signedIn.value) {
-    return navigateTo({ path: '/login', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } })
+    return navigateTo(withReturnPath('/login', to.fullPath))
   }
 
   const { businesses, loadBusinesses } = useActiveBusiness()
   if (businesses.value || BUSINESS_FREE.has(to.path)) return
   try {
-    if (!await loadBusinesses({ navigate: false })) {
-      return navigateTo({ path: '/negocio', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } })
+    if (!await loadBusinesses({ navigate: false, returnTo: to.fullPath })) {
+      return navigateTo(withReturnPath('/negocio', to.fullPath))
     }
   } catch (error) {
     // The API client has already shown the error; a 401 or 403 says where to go next.

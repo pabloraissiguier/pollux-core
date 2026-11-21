@@ -23,9 +23,10 @@ export default defineConfig({
     trace: 'retain-on-failure'
   },
   projects: [
-    // Phone first. Pixel 7 runs on Chromium, so one browser download covers both projects.
+    // Phone first: every test runs here. Pixel 7 runs on Chromium, so one browser download covers both.
     { name: 'phone', use: { ...devices['Pixel 7'] } },
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } }
+    // Wide screen only for flows tagged `@desktop` (the shell, the phone-order flow at the PC).
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, grep: /@desktop/ }
   ],
   webServer: [
     {

@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures'
 
-test('the owner signs in and lands on Inicio of their business', async ({ page, createOwner, signIn, openSidebar }) => {
+test('the owner signs in and lands on Inicio of their business', { tag: '@desktop' }, async ({ page, createOwner, signIn, openSidebar }) => {
   const userId = await createOwner('Gio Pack')
 
   await signIn(userId)
@@ -50,10 +50,11 @@ test('signing out from the sidebar ends the session', async ({ page, createOwner
   await expect(page).toHaveURL('/login?redirect=/pedidos')
 })
 
-test('an expired or rejected session sends the owner back to sign-in', async ({ page, signIn }) => {
+test('an expired or rejected session sends the owner back to sign-in, keeping the page', async ({ page, signIn }) => {
+  await page.goto('/clientes')
   // The API's test verifier only accepts a user id, so this token is rejected with a 401.
-  await signIn('not-a-user-id')
+  await signIn('not-a-user-id', { from: 'here' })
 
-  await expect(page).toHaveURL(/\/login/)
+  await expect(page).toHaveURL('/login?redirect=/clientes')
   await expect(page.getByText('Iniciá sesión para continuar', { exact: true })).toBeVisible()
 })

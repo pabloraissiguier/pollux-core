@@ -7,7 +7,7 @@ const { businesses, activeBusinessId, selectBusiness, loadBusinesses } = useActi
 const { signOut } = useSignOut()
 
 // Always fresh: the picker is where a stale or revoked choice ends up.
-const { status } = await useAsyncData('negocio-businesses', async () => {
+const { status, refresh } = await useAsyncData('negocio-businesses', async () => {
   if (await loadBusinesses() && businesses.value?.length === 1) {
     await navigateTo(safeRedirect(route.query.redirect), { replace: true })
   }
@@ -33,6 +33,15 @@ async function choose(id: string) {
         class="h-24 w-full"
       />
 
+      <UAlert
+        v-else-if="status === 'error'"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-circle-alert"
+        title="No pudimos cargar tus negocios"
+        :actions="[{ label: 'Reintentar', color: 'neutral', variant: 'outline', onClick: () => refresh() }]"
+      />
+
       <UEmpty
         v-else-if="!businesses?.length"
         icon="i-lucide-building"
@@ -52,7 +61,6 @@ async function choose(id: string) {
           :trailing-icon="business.id === activeBusinessId ? 'i-lucide-check' : 'i-lucide-chevron-right'"
           color="neutral"
           variant="outline"
-          size="xl"
           block
           class="justify-between"
           @click="choose(business.id)"

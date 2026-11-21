@@ -14,23 +14,6 @@ function supabaseClient({ supabaseUrl, supabasePublishableKey }: { supabaseUrl: 
   return supabase
 }
 
-function readTestToken(): string | null {
-  try {
-    return localStorage.getItem(TEST_TOKEN_KEY)
-  } catch {
-    return null
-  }
-}
-
-function writeTestToken(token: string | null) {
-  try {
-    if (token) localStorage.setItem(TEST_TOKEN_KEY, token)
-    else localStorage.removeItem(TEST_TOKEN_KEY)
-  } catch {
-    // Storage blocked (private mode): the session just won't outlive the tab.
-  }
-}
-
 export class SignInError extends Error {}
 
 /**
@@ -47,7 +30,7 @@ export function useAuth() {
   /** Restores the stored session. Runs once, in the auth plugin, before the first navigation. */
   async function init() {
     if (testMode) {
-      signedIn.value = !!readTestToken()
+      signedIn.value = !!readStorage(TEST_TOKEN_KEY)
       return
     }
     const client = supabaseClient(config)
@@ -60,7 +43,7 @@ export function useAuth() {
 
   async function signIn(email: string, password: string) {
     if (testMode) {
-      writeTestToken(password)
+      writeStorage(TEST_TOKEN_KEY, password)
       signedIn.value = true
       return
     }
@@ -74,14 +57,14 @@ export function useAuth() {
   }
 
   async function signOut() {
-    if (testMode) writeTestToken(null)
+    if (testMode) writeStorage(TEST_TOKEN_KEY, null)
     else await supabaseClient(config).auth.signOut({ scope: 'local' })
     signedIn.value = false
   }
 
   /** A current access token (Supabase refreshes it when it's about to expire), or null. */
   async function accessToken(): Promise<string | null> {
-    if (testMode) return readTestToken()
+    if (testMode) return readStorage(TEST_TOKEN_KEY)
     const { data } = await supabaseClient(config).auth.getSession()
     return data.session?.access_token ?? null
   }

@@ -40,8 +40,8 @@ export function maskCuit(input: string): string {
   return [digits.slice(0, 2), digits.slice(2, 10), digits.slice(10)].filter(Boolean).join('-')
 }
 
-// Enums that only live in the DB schema so far (`@pollux/db`). They belong in `@pollux/contracts`
-// next to the others; until then, these types must match `db/src/schema`.
+// Enums that only live in the DB schema so far (`@pollux/db`). Moving them to `@pollux/contracts`
+// is issue #30; until then, these types must match `db/src/schema`.
 export type OrderStatus = 'pending' | 'delivered' | 'cancelled'
 export type BalanceEntryType = 'order_delivered' | 'delivery_undone' | 'payment' | 'payment_voided' | 'opening_balance' | 'adjustment'
 export type StockMovementType = 'order_delivered' | 'delivery_undone' | 'purchase' | 'adjustment'

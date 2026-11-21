@@ -37,7 +37,6 @@ const items = computed<DropdownMenuItem[]>(() => (businesses.value ?? []).map(bu
       variant="ghost"
       :square="collapsed"
       block
-      class="data-[state=open]:bg-elevated"
     />
   </UDropdownMenu>
 </template>

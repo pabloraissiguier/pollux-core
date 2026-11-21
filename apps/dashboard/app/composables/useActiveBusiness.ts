@@ -1,67 +1,56 @@
-/** This device's chosen business. Each phone or PC remembers its own. */
-const STORAGE_KEY = 'pollux.business-id'
-
 export interface Business {
   id: string
   name: string
 }
 
-function readStored(): string | null {
-  try {
-    return localStorage.getItem(STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
-
-function writeStored(id: string | null) {
-  try {
-    if (id) localStorage.setItem(STORAGE_KEY, id)
-    else localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    // Storage blocked: the choice lasts until the tab closes.
-  }
-}
+/** Each device remembers each user's choice, so another user signing in on it starts clean. */
+const storageKey = (userId: string) => `pollux.business-id.${userId}`
 
 /**
  * The businesses the signed-in user belongs to (from `GET /me`) and the active one, which goes
  * out as `X-Business-Id` on every API request.
  */
 export function useActiveBusiness() {
+  const userId = useState<string | null>('user-id', () => null)
   const businesses = useState<Business[] | null>('businesses', () => null)
-  const activeBusinessId = useState<string | null>('active-business-id', () => readStored())
+  const activeBusinessId = useState<string | null>('active-business-id', () => null)
 
   const activeBusiness = computed(() => businesses.value?.find(b => b.id === activeBusinessId.value) ?? null)
   /** The switcher only shows up for users with several businesses. */
   const hasSeveral = computed(() => (businesses.value?.length ?? 0) > 1)
 
-  function selectBusiness(id: string) {
+  function setActive(id: string | null) {
     activeBusinessId.value = id
-    writeStored(id)
+    if (userId.value) writeStorage(storageKey(userId.value), id)
   }
 
-  function forgetBusiness() {
-    activeBusinessId.value = null
-    writeStored(null)
-  }
+  const selectBusiness = (id: string) => setActive(id)
+  const forgetBusiness = () => setActive(null)
 
   /**
-   * Loads the user's businesses. Returns false when the user still has to pick one (several and
-   * none chosen on this device, or none at all), so the caller can send them to the picker.
+   * Loads the user's businesses and restores this device's choice. Returns false when the user
+   * still has to pick one (several and none chosen here, or none at all), so the caller can send
+   * them to the picker. `/me` goes without `X-Business-Id`, so a stale choice (membership
+   * removed) just means picking again, not an error.
    */
-  async function loadBusinesses(options?: ApiRequestOptions): Promise<boolean> {
+  async function loadBusinesses(options: ApiRequestOptions = {}): Promise<boolean> {
     const { request } = useApi()
-    const me = await request(c => c.me.$get(), options)
+    const me = await request(c => c.me.$get(), { ...options, business: false })
+    userId.value = me.profile.id
     businesses.value = me.businesses.map(({ id, name }) => ({ id, name }))
-    if (me.activeBusinessId) selectBusiness(me.activeBusinessId)
-    else forgetBusiness()
-    return me.activeBusinessId !== null
+
+    const stored = readStorage(storageKey(me.profile.id))
+    const only = me.businesses.length === 1 ? me.businesses[0]!.id : null
+    setActive(me.businesses.some(b => b.id === stored) ? stored : only)
+    return activeBusinessId.value !== null
   }
 
-  /** Forgets everything about the signed-in user, for sign-out. */
-  function reset() {
+  /** Forgets the signed-in user's businesses in memory (the device keeps their choice). */
+  function forgetSession() {
+    userId.value = null
     businesses.value = null
+    activeBusinessId.value = null
   }
 
-  return { businesses, activeBusinessId, activeBusiness, hasSeveral, selectBusiness, forgetBusiness, loadBusinesses, reset }
+  return { businesses, activeBusinessId, activeBusiness, hasSeveral, selectBusiness, forgetBusiness, loadBusinesses, forgetSession }
 }

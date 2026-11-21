@@ -1,18 +1,24 @@
 /**
- * Ends the session on this device and forgets the signed-in user's data. The chosen business
- * stays remembered for the next sign-in on this device.
+ * Ending the session on this device: the auth session, the user's businesses in memory and every
+ * cached page's data. The device keeps the user's chosen business for their next sign-in.
  */
 export function useSignOut() {
   const auth = useAuth()
-  const { reset } = useActiveBusiness()
+  const { forgetSession } = useActiveBusiness()
   const router = useRouter()
 
-  async function signOut() {
+  /** Ends the session without navigating (the API client picks where to go). */
+  async function endSession() {
     await auth.signOut()
-    reset()
+    forgetSession()
     clearNuxtData()
+  }
+
+  /** The "Cerrar sesión" action. */
+  async function signOut() {
+    await endSession()
     await router.replace('/login')
   }
 
-  return { signOut }
+  return { endSession, signOut }
 }
