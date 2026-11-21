@@ -3,7 +3,9 @@ import {
   balanceEntryTypeLabels,
   formatDate,
   formatMoney,
+  formatPercent,
   maskCuit,
+  parseDecimalInput,
   orderStatusLabels,
   paymentMethodLabels,
   stockAdjustmentReasonLabels,
@@ -13,6 +15,15 @@ import {
 
 // Intl separates the currency sign with a non-breaking space.
 const NBSP = ' '
+
+describe('formatPercent', () => {
+  it('shows a VAT rate with a decimal comma and no trailing zeros', () => {
+    expect(formatPercent('21.00')).toBe(`21${NBSP}%`)
+    expect(formatPercent('10.50')).toBe(`10,5${NBSP}%`)
+    expect(formatPercent('2.50')).toBe(`2,5${NBSP}%`)
+    expect(formatPercent('0.00')).toBe(`0${NBSP}%`)
+  })
+})
 
 describe('formatMoney', () => {
   it('shows ARS with dots for thousands and a comma for cents', () => {
@@ -44,6 +55,24 @@ describe('formatDate', () => {
 
   it('refuses something that is not a date', () => {
     expect(() => formatDate('21/11/2026')).toThrow()
+  })
+})
+
+describe('parseDecimalInput', () => {
+  it('reads an amount typed the es-AR way, with or without thousands dots', () => {
+    expect(parseDecimalInput('1234,50')).toBe('1234.50')
+    expect(parseDecimalInput('1.234,50')).toBe('1234.50')
+    expect(parseDecimalInput('1.234.567,5')).toBe('1234567.5')
+  })
+
+  it('takes a lone point as the decimal point, as the API writes amounts', () => {
+    expect(parseDecimalInput('1234.50')).toBe('1234.50')
+    expect(parseDecimalInput('1500')).toBe('1500')
+  })
+
+  it('ignores spaces and leaves anything else for validation to reject', () => {
+    expect(parseDecimalInput(' 1 234,50 ')).toBe('1234.50')
+    expect(parseDecimalInput('12a')).toBe('12a')
   })
 })
 
