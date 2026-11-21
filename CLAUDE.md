@@ -70,7 +70,7 @@ Invoicing (facturación) is done today through the **ARCA** portal (formerly AFI
 
 ## Commands
 
-pnpm is pinned through `packageManager` in the root `package.json`. Run `corepack enable` once (or call `corepack pnpm …`).
+Versions are pinned: **Node 24.22.3** (`.nvmrc`, so `nvm use` picks it up) and **pnpm 12.21.0** (`packageManager` and `engines` in the root `package.json`). `engineStrict` in `pnpm-workspace.yaml` makes `pnpm install` fail on any other version.
 
 ```bash
 pnpm install                        # from the root, installs every workspace

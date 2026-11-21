@@ -3,6 +3,9 @@ packages:
   - "packages/*"
   - "db"
 
+# Fail installs on a Node or pnpm version other than the one in package.json "engines".
+engineStrict: true
+
 allowBuilds:
   '@parcel/watcher': false
   '@tailwindcss/oxide': false
