@@ -1,24 +1,5 @@
-import { expect, test, type Page } from './fixtures'
-
-async function createCategory(page: Page, name: string) {
-  await page.goto('/productos/categorias')
-  await page.getByRole('button', { name: 'Nueva categoría' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Nueva categoría' })
-  await dialog.getByRole('textbox', { name: 'Nombre' }).fill(name)
-  await dialog.getByRole('button', { name: 'Crear categoría' }).click()
-  await expect(page.getByRole('link', { name, exact: true })).toBeVisible()
-}
-
-async function createProduct(page: Page, product: { code: string, name: string, category: string, price: string }) {
-  await page.goto('/productos/nuevo')
-  await page.getByRole('textbox', { name: 'Código' }).fill(product.code)
-  await page.getByRole('textbox', { name: 'Nombre' }).fill(product.name)
-  await page.getByRole('button', { name: 'Categoría' }).click()
-  await page.getByRole('option', { name: product.category }).click()
-  await page.getByRole('textbox', { name: 'Precio' }).fill(product.price)
-  await page.getByRole('button', { name: 'Crear producto' }).click()
-  await expect(page.getByRole('heading', { name: product.name, level: 1 })).toBeVisible()
-}
+import { createCategory, createProduct, dataRows } from './catalog'
+import { expect, test } from './fixtures'
 
 test('the owner previews a Category Price update, cancels it, then applies it', { tag: '@desktop' }, async ({ page, createOwner, signIn }) => {
   const userId = await createOwner('Gio Pack')
@@ -46,7 +27,7 @@ test('the owner previews a Category Price update, cancels it, then applies it', 
   await page.getByRole('button', { name: 'Ver vista previa' }).click()
   const preview = page.getByRole('table')
   // The Products with their current and new Price, by name.
-  const rows = preview.getByRole('row').filter({ has: page.getByRole('cell') })
+  const rows = dataRows(preview)
   await expect(rows).toHaveCount(2)
   await expect(rows.nth(0)).toContainText('Bandeja 103')
   await expect(rows.nth(0)).toContainText('$ 333,33')
@@ -67,7 +48,7 @@ test('the owner previews a Category Price update, cancels it, then applies it', 
   await page.getByRole('link', { name: 'Actualizar precios de Descartables' }).click()
   await page.getByRole('textbox', { name: 'Porcentaje' }).fill('12,5')
   await page.getByRole('button', { name: 'Ver vista previa' }).click()
-  await expect(page.getByRole('table').getByRole('row').filter({ has: page.getByRole('cell') })).toHaveCount(2)
+  await expect(dataRows(page.getByRole('table'))).toHaveCount(2)
   await page.getByRole('button', { name: 'Aplicar a 2 productos' }).click()
   await expect(page.getByText('Precios actualizados', { exact: true })).toBeVisible()
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
 import type { z } from 'zod'
-import { categoryPriceUpdateFormSchema, type CategoryPriceUpdatePlan } from '~/utils/products'
+import { categoryPriceUpdateFormSchema, type CategoryPriceUpdatePlan, type PriceUpdateDirection } from '~/utils/products'
 
 useSeoMeta({ title: 'Actualizar precios' })
 
@@ -16,16 +16,19 @@ const form = useTemplateRef('form')
 // `?categoria=` comes from the Categories screen, so the Category is already picked.
 const state = reactive({
   categoryId: typeof route.query.categoria === 'string' ? route.query.categoria : undefined,
-  direction: 'up' as 'up' | 'down',
+  direction: 'up' as PriceUpdateDirection,
   percent: ''
 })
 
-const directionItems = [
+const directionItems: { label: string, value: PriceUpdateDirection }[] = [
   { label: 'Aumento', value: 'up' },
   { label: 'Rebaja', value: 'down' }
 ]
 
-/** The previewed update. Applying sends exactly this Category and percent, never the live form. */
+/**
+ * The previewed update. Applying sends this Category and percent, never the live form; the API
+ * recomputes from the Prices at that moment, which only differ if one changed in between.
+ */
 const plan = ref<CategoryPriceUpdatePlan | null>(null)
 const previewing = ref(false)
 const applying = ref(false)
@@ -57,7 +60,8 @@ async function onApply() {
     const applied = await request(c => c.categories[':id']['price-update'].$post({ param: { id: category.id }, json: { percent } }))
     toast.add({
       title: 'Precios actualizados',
-      description: `${changeLabel(applied.percent)} en ${productCount(applied.items.length)} de ${applied.category.name}.`,
+      // No count: the API lists every Active Product, also those whose Price didn't change after rounding.
+      description: `${changeLabel(applied.percent)} en ${applied.category.name}.`,
       color: 'success',
       icon: 'i-lucide-circle-check'
     })
@@ -124,6 +128,7 @@ const columns: TableColumn<PlanItem>[] = [
           :schema="categoryPriceUpdateFormSchema"
           :state="state"
           :validate-on="['input']"
+          :disabled="applying"
           class="flex flex-col gap-4"
           @submit="onPreview"
         >

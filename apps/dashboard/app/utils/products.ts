@@ -35,10 +35,14 @@ export const priceChangeFormSchema = z.object({ price: priceInputSchema })
  * without a sign (phone keyboards with `inputmode="decimal"` often have no minus key); the output
  * is the signed percent the API takes, checked against the API's own limits.
  */
+export const priceUpdateDirectionSchema = z.enum(['up', 'down'])
+/** "Aumento" (`up`) or "Rebaja" (`down`): the sign of a Category Price update's percent. */
+export type PriceUpdateDirection = z.infer<typeof priceUpdateDirectionSchema>
+
 export const categoryPriceUpdateFormSchema = z
   .object({
     categoryId: z.uuid({ error: 'Elegí una categoría' }),
-    direction: z.enum(['up', 'down']),
+    direction: priceUpdateDirectionSchema,
     percent: z
       .string()
       .trim()
