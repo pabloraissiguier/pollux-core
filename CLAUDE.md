@@ -81,3 +81,13 @@ pnpm --filter dashboard lint        # or typecheck; see apps/dashboard/CLAUDE.md
 Copy `.env.example` to `.env` and fill in the Supabase values. The DB is remote, so there's nothing to start locally.
 
 `docker-compose.yml` only has a local Postgres (port 5433), kept for a possible future self-hosted setup; it isn't part of the current workflow. The dashboard uses port 3010 because 3000 is taken by other local projects.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues on `pabloraissiguier/pollux-core` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` at the repo root plus ADRs in `docs/adr/`. See `docs/agents/domain.md`.
