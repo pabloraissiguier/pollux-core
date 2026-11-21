@@ -33,6 +33,12 @@ const schema = z.object({
    * against the local test DB. Refused in production by the app factory.
    */
   API_AUTH_VERIFIER: z.enum(['supabase', 'test']).default('supabase'),
+  /**
+   * Browser origins allowed to call the API, comma-separated (the dashboard's: dev, Playwright,
+   * Vercel). An origin not listed gets no CORS headers.
+   */
+  API_CORS_ORIGINS: z.string().default('http://localhost:3010').transform(value =>
+    value.split(',').map(origin => origin.trim()).filter(Boolean)),
   /** Set by Vercel on its functions. */
   VERCEL: z.string().optional(),
 })

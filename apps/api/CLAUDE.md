@@ -30,13 +30,14 @@ The suite builds its own app and never reads `DATABASE_URL`; the vitest config r
 
 ## Structure
 
-- `src/app.ts`: **`createApp({ db, verifyToken })`**, the app factory, and `AppType`. It mounts the session middleware and every module router, chained. It throws if given the test verifier when `NODE_ENV=production`.
+- `src/app.ts`: **`createApp({ db, verifyToken, corsOrigins })`**, the app factory, and `AppType`. It mounts CORS first, then the session middleware and every module router, chained. It throws if given the test verifier when `NODE_ENV=production`.
 - `src/index.ts`: the app built from env, exported as default. It is the entry for the Hono CLI and for Vercel (whose Hono support serves the default export of `src/index.ts`; on Vercel it uses `DATABASE_POOLER_URL` with `prepare: false`). `src/server.ts` serves it on Node.
 - `src/auth/verifier.ts`: the Supabase verifier (JWKS at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`, issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`) and the test verifier.
 - `src/auth/session.ts`: the **session** middleware (token → 401, first-sight `profiles` row, business from `X-Business-Id` → 403 unless a member, or the only membership) and **`requireBusiness`**. Mount `requireBusiness` on every business-scoped router: it guarantees `c.var.businessId` is a string (403 `no_business`, 400 `business_not_selected`). `/me` is the only route without it.
 - `src/routes/<module>.ts`: one Hono sub-router per module, mounted in `createApp`.
+- **CORS** runs before the session, so a preflight `OPTIONS` never needs a token, and error responses (401, 403, 400, 404) carry the CORS headers so the dashboard can read `{ error }`. Allowed origins come from **`API_CORS_ORIGINS`** (comma-separated, exact match, default `http://localhost:3010`) in `src/env.ts`; an unlisted origin gets no `Access-Control-Allow-Origin`. Allowed headers: `Authorization`, `Content-Type`, `X-Business-Id`; methods: GET, POST, PUT, PATCH, DELETE. When the dashboard runs on a new origin (a Playwright port, a Vercel domain), add it to the variable. Tests pass origins directly: `setupTestApp({ corsOrigins })`.
 - `src/errors.ts`: `ApiError` and the error handler. `src/validator.ts`: `validate(target, schema)`, the `zValidator` wrapper to use for every request schema.
-- `test/`: `global-setup.ts` prepares the test DB; `fixtures.ts` has `setupTestApp()` (users, businesses, `request(path, { as, businessId })`).
+- `test/`: `global-setup.ts` prepares the test DB; `fixtures.ts` has `setupTestApp({ corsOrigins? })` (users, businesses, `request(path, { as, businessId })`).
 
 ## Stack
 

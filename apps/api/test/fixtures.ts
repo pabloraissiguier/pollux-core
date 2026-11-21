@@ -14,9 +14,9 @@ import { testDatabaseUrl } from './test-db'
  * memberships are inserted directly. Each test file creates its own business, so files can run
  * in parallel without cleaning up between tests.
  */
-export function setupTestApp() {
+export function setupTestApp({ corsOrigins = ['http://localhost:3010'] }: { corsOrigins?: string[] } = {}) {
   const { db, close } = createDb(testDatabaseUrl(), { max: 5 })
-  const app = createApp({ db, verifyToken: createTestVerifier() })
+  const app = createApp({ db, verifyToken: createTestVerifier(), corsOrigins })
 
   /** A signed-up user: a row in the stand-in `auth.users`, with no profile yet. */
   async function createUser(): Promise<string> {

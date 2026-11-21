@@ -14,8 +14,8 @@ describe('app factory', () => {
   it('refuses the test verifier in production', async () => {
     vi.stubEnv('NODE_ENV', 'production')
 
-    expect(() => createApp({ db, verifyToken: createTestVerifier() })).toThrow(/production/)
-    expect(() => createApp({ db, verifyToken: createSupabaseVerifier('https://example.supabase.co') })).not.toThrow()
+    expect(() => createApp({ db, verifyToken: createTestVerifier(), corsOrigins: [] })).toThrow(/production/)
+    expect(() => createApp({ db, verifyToken: createSupabaseVerifier('https://example.supabase.co'), corsOrigins: [] })).not.toThrow()
     await close()
   })
 })
