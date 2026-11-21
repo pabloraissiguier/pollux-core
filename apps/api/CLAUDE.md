@@ -42,7 +42,7 @@ The suite builds its own app and never reads `DATABASE_URL`; the vitest config r
   - `/categories`: list, create, `PATCH /:id` rename. A name that is already taken is 409 `category_name_taken`.
   - `/products`: list (`q` matches name, Code or Brand; `categoryId`; `active=true|false`, both when left out), create, detail, `PATCH /:id`. A Code that is already taken is 409 `product_code_taken`, and a missing or other-tenant Category is 404 `category_not_found`.
   - **No delete:** `PATCH { isActive: false }` makes a Product Inactive, and `true` reactivates it.
-  - **Price changes go through `PATCH { price }`:** the Product row is locked `FOR UPDATE`, and when the Price differs, one `product_price_changes` row (old, new, who) is written in the same transaction. Creating a Product writes its first row (`oldPrice: null`). `GET /products/:id/price-history` lists them newest first, with `changedBy: { id, fullName }`. Category Price updates should write their history through the same `recordPriceChange` in `services/products.ts`.
+  - **Price changes go through `PATCH { price }`:** the Product row is locked `FOR UPDATE`, and when the Price differs, one `product_price_changes` row (old, new, who) is written in the same transaction. Creating a Product writes its first row (`oldPrice: null`). `GET /products/:id/price-history` lists them newest first, with `changedBy: { id, fullName }`. Category Price updates should write their history through `recordPriceChange` in `services/products.ts` (export it when they need it).
 - `test/`: `global-setup.ts` prepares the test DB; `fixtures.ts` has `setupTestApp({ corsOrigins? })` (users, businesses, `request(path, { as, businessId })`).
 
 ## Stack

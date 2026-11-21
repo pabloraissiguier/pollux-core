@@ -16,7 +16,7 @@ const categoryColumns = {
   updatedAt: categories.updatedAt,
 }
 
-export const categoryNotFound = () => new ApiError(404, 'category_not_found', 'No encontramos la categoría')
+const categoryNotFound = () => new ApiError(404, 'category_not_found', 'No encontramos la categoría')
 
 /** Turns the per-business unique name violation into a 409; rethrows anything else. */
 function nameTaken(err: unknown): never {

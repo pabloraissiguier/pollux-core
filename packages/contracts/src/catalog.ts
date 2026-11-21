@@ -26,7 +26,8 @@ export const priceSchema = moneySchema.refine(v => !v.startsWith('-'), { message
 
 /** Alícuota de IVA: a percentage between 0 and 100, as a decimal string ("21.00", "10.50"). */
 export const vatRateSchema = moneySchema.refine(
-  v => !v.startsWith('-') && Number(v) <= 100,
+  // `moneySchema` outputs exactly 2 decimals, so dropping the point gives exact hundredths.
+  v => !v.startsWith('-') && BigInt(v.replace('.', '')) <= 10_000n,
   { message: 'Ingresá una alícuota entre 0 y 100' },
 )
 
