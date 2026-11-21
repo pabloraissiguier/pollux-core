@@ -5,15 +5,10 @@ import { productCreateFormSchema } from '~/utils/products'
 
 useSeoMeta({ title: 'Nuevo producto' })
 
-const route = useRoute()
 const { request } = useApi()
 const form = useTemplateRef('form')
 
-// Coming from a Category's list (`?categoria=`), the new Product starts in that Category.
-const state = ref({
-  ...productFormState(),
-  categoryId: typeof route.query.categoria === 'string' ? route.query.categoria : undefined
-})
+const state = ref(productFormState())
 const saving = ref(false)
 
 async function onSubmit({ data }: FormSubmitEvent<z.output<typeof productCreateFormSchema>>) {

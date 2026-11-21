@@ -9,6 +9,9 @@ const props = defineProps<{ withPrice?: boolean }>()
 const state = defineModel<ProductFormState>({ required: true })
 
 const { data: categories } = await useCategories()
+// "Sin categoría" is a choice of its own (value null, which the API reads as "clear it"): easier
+// to hit on a phone than the select's small clear button, and reachable from the keyboard.
+const categoryItems = computed(() => [{ id: null, name: 'Sin categoría' }, ...categories.value])
 const vatRates = computed(() => vatRateItems(state.value.vatRate))
 </script>
 
@@ -57,12 +60,11 @@ const vatRates = computed(() => vatRateItems(state.value.vatRate))
   >
     <USelectMenu
       v-model="state.categoryId"
-      :items="categories"
+      :items="categoryItems"
       value-key="id"
       label-key="name"
       placeholder="Sin categoría"
       :search-input="{ placeholder: 'Buscar categoría', autofocus: false }"
-      clear
       class="w-full"
     />
   </UFormField>

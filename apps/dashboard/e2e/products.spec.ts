@@ -31,7 +31,7 @@ test('the owner creates a Product, changes its Price and sees the price history'
 
   await page.getByRole('button', { name: 'Cambiar precio' }).click()
   const dialog = page.getByRole('dialog', { name: 'Cambiar precio' })
-  await dialog.getByRole('textbox', { name: 'Precio nuevo' }).fill('1500')
+  await dialog.getByRole('textbox', { name: 'Precio nuevo' }).fill('1.500,00')
   await dialog.getByRole('button', { name: 'Guardar precio' }).click()
   await expect(dialog).toBeHidden()
 
@@ -82,6 +82,15 @@ test('the owner edits a Product and makes it Inactive, and the catalog hides it 
   await expect(page.getByRole('heading', { name: 'Bolsa camiseta 45x60', level: 1 })).toBeVisible()
   await expect(page.getByText('Plastiflex')).toBeVisible()
   await expect(page.getByText('10,5 %')).toBeVisible()
+  await expect(page.getByRole('definition').filter({ hasText: 'Bolsas' })).toBeVisible()
+
+  // Taking it out of its Category.
+  await page.getByRole('button', { name: 'Editar' }).click()
+  await dialog.getByRole('button', { name: 'Categoría' }).click()
+  await page.getByRole('option', { name: 'Sin categoría' }).click()
+  await dialog.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('definition').filter({ hasText: 'Sin categoría' })).toBeVisible()
 
   await page.getByRole('switch', { name: 'Activo', exact: true }).click()
   await expect(page.getByText('Producto desactivado', { exact: true })).toBeVisible()

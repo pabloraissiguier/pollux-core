@@ -6,15 +6,15 @@ useSeoMeta({ title: 'Categorías' })
 const { data: categories, status, refresh } = await useCategories()
 
 const formOpen = ref(false)
-const edited = ref<Category | null>(null)
+const renaming = ref<Category | null>(null)
 
-function create() {
-  edited.value = null
+function openCreate() {
+  renaming.value = null
   formOpen.value = true
 }
 
-function rename(category: Category) {
-  edited.value = category
+function openRename(category: Category) {
+  renaming.value = category
   formOpen.value = true
 }
 
@@ -42,7 +42,7 @@ async function onSaved() {
           <UButton
             icon="i-lucide-plus"
             label="Nueva categoría"
-            @click="create"
+            @click="openCreate"
           />
         </template>
       </UDashboardNavbar>
@@ -88,14 +88,14 @@ async function onSaved() {
             :aria-label="`Renombrar ${category.name}`"
             color="neutral"
             variant="ghost"
-            @click="rename(category)"
+            @click="openRename(category)"
           />
         </div>
       </UPageList>
 
       <ProductCategoryFormModal
         v-model:open="formOpen"
-        :category="edited"
+        :category="renaming"
         @saved="onSaved"
       />
     </template>

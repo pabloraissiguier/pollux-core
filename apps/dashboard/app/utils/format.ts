@@ -52,6 +52,16 @@ export function maskCuit(input: string): string {
   return [digits.slice(0, 2), digits.slice(2, 10), digits.slice(10)].filter(Boolean).join('-')
 }
 
+/**
+ * An amount as people type it in es-AR (`"1.234,50"`, `"1234,50"`) → the decimal string the API
+ * takes (`"1234.50"`). With a comma, dots are thousands separators; without one, a point is the
+ * decimal point. Anything else is left as is, for the money schema to reject with its message.
+ */
+export function parseDecimalInput(input: string): string {
+  const compact = input.replace(/\s/g, '')
+  return compact.includes(',') ? compact.replace(/\./g, '').replace(',', '.') : compact
+}
+
 // Enums that only live in the DB schema so far (`@pollux/db`). Moving them to `@pollux/contracts`
 // is issue #30; until then, these types must match `db/src/schema`.
 export type OrderStatus = 'pending' | 'delivered' | 'cancelled'

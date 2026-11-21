@@ -9,14 +9,14 @@ export type Category = InferResponseType<ApiClient['categories']['$get'], 200>['
 export type PriceChange = InferResponseType<ApiClient['products'][':id']['price-history']['$get'], 200>['items'][number]
 
 /**
- * A Price as typed in es-AR ("1234,50") or with a point ("1234.50"), turned into the decimal
- * string the API takes before the shared schema checks it.
+ * A Price as typed in es-AR ("1.234,50", "1234,50") or with a point ("1234.50"), turned into the
+ * decimal string the API takes before the shared schema checks it.
  */
 export const priceInputSchema = z
   .string()
   .trim()
   .min(1, 'Ingresá el precio')
-  .transform(value => value.replace(',', '.'))
+  .transform(parseDecimalInput)
   .pipe(priceSchema)
 
 /** The new-Product form: the API's schema, with the Price typed the es-AR way. */
@@ -33,7 +33,8 @@ export interface ProductFormState {
   code: string
   name: string
   brand: string
-  categoryId: string | null | undefined
+  /** null is "Sin categoría", sent as null so an edit takes the Product out of its Category. */
+  categoryId: string | null
   price: string
   vatRate: string
 }
@@ -43,7 +44,7 @@ export function productFormState(product?: Product): ProductFormState {
     code: product?.code ?? '',
     name: product?.name ?? '',
     brand: product?.brand ?? '',
-    categoryId: product?.category?.id ?? undefined,
+    categoryId: product?.category?.id ?? null,
     price: product ? priceForInput(product.price) : '',
     vatRate: product?.vatRate ?? '21.00'
   }
