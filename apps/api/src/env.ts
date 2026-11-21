@@ -1,0 +1,48 @@
+import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { z } from 'zod'
+
+/**
+ * The shared `.env` at the workspace root, found by walking up from the working directory.
+ * (Not from this file's path: the Hono CLI bundles this module before running it.)
+ */
+function findRootEnvFile(): string | null {
+  for (let dir = process.cwd(); ; dir = dirname(dir)) {
+    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) {
+      const file = join(dir, '.env')
+      return existsSync(file) ? file : null
+    }
+    if (dirname(dir) === dir) return null
+  }
+}
+
+// Local runs read the shared root .env. Variables already set (shell, Vercel) win over the file.
+const rootEnvFile = findRootEnvFile()
+if (rootEnvFile) process.loadEnvFile(rootEnvFile)
+
+const schema = z.object({
+  NODE_ENV: z.string().default('development'),
+  /** Session pooler (5432) for the Node server and the CLI. */
+  DATABASE_URL: z.url(),
+  /** Transaction pooler (6543), used on Vercel with prepared statements off. */
+  DATABASE_POOLER_URL: z.url().optional(),
+  SUPABASE_URL: z.url(),
+  API_PORT: z.coerce.number().int().positive().default(3001),
+  /**
+   * Dev flag: `test` makes the bearer token just a user id, for trying the app with the Hono CLI
+   * against the local test DB. Refused in production by the app factory.
+   */
+  API_AUTH_VERIFIER: z.enum(['supabase', 'test']).default('supabase'),
+  /** Set by Vercel on its functions. */
+  VERCEL: z.string().optional(),
+})
+
+export type Env = z.infer<typeof schema>
+
+export function readEnv(): Env {
+  const result = schema.safeParse(process.env)
+  if (!result.success) {
+    throw new Error(`Invalid API environment:\n${z.prettifyError(result.error)}`)
+  }
+  return result.data
+}

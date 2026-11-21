@@ -1,7 +1,8 @@
 # Local environment for pollux-core.
-# NOT IN USE: development runs against a remote Supabase project (see db/CLAUDE.md).
-# The `db` service is kept for a possible future self-hosted Postgres setup;
-# the api and dashboard services are commented-out placeholders.
+# Development runs against a remote Supabase project (see db/CLAUDE.md).
+# The `db` service is the Postgres the API test suite uses (`pnpm test:api` recreates a
+# `pollux_test` database on it). Start it with `docker compose up -d db`.
+# The api and dashboard services are commented-out placeholders.
 name: pollux
 
 services:

@@ -1,13 +1,9 @@
+import { VAT_CONDITIONS } from '@pollux/contracts'
 import { foreignKey, index, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { app, businessId, createdAt, id, updatedAt } from './_shared'
 import { businesses } from './tenancy'
 
-export const vatCondition = app.enum('vat_condition', [
-  'responsable_inscripto',
-  'monotributo',
-  'consumidor_final',
-  'exento',
-])
+export const vatCondition = app.enum('vat_condition', VAT_CONDITIONS)
 
 /**
  * Cliente. One kind of customer only: how they pay is decided per Payment,

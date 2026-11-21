@@ -1,3 +1,4 @@
+import { STOCK_ADJUSTMENT_REASONS } from '@pollux/contracts'
 import { sql } from 'drizzle-orm'
 import { check, foreignKey, index, integer, text, uuid } from 'drizzle-orm/pg-core'
 import { app, businessId, createdAt, id } from './_shared'
@@ -13,12 +14,7 @@ export const stockMovementType = app.enum('stock_movement_type', [
   'adjustment',
 ])
 
-export const stockAdjustmentReason = app.enum('stock_adjustment_reason', [
-  'initial_count',
-  'count_correction',
-  'breakage',
-  'other',
-])
+export const stockAdjustmentReason = app.enum('stock_adjustment_reason', STOCK_ADJUSTMENT_REASONS)
 
 /**
  * Movimiento de stock. `quantity` is signed: positive adds On-hand stock, negative removes it.

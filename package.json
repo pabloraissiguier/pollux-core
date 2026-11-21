@@ -7,6 +7,8 @@
     "pnpm": "12.21.0"
   },
   "scripts": {
+    "dev:api": "pnpm --filter api dev",
+    "test:api": "pnpm --filter api test",
     "dev:dashboard": "pnpm --filter dashboard dev",
     "build:dashboard": "pnpm --filter dashboard build",
     "db:generate": "pnpm --filter @pollux/db generate",

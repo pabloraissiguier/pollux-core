@@ -2,9 +2,41 @@
 
 This file covers the API app only. Product context, the domain and the repo layout are in the root `CLAUDE.md`.
 
-## Status
+## Commands
 
-The stack is decided, but the app has **not been scaffolded yet**. Once it is, add the real commands (dev, build, lint, test, running a single test, generating and applying migrations).
+Run from `apps/api/` (or from the root with `pnpm --filter api <script>`). Migrations are run from the root: see `db/CLAUDE.md`.
+
+```bash
+pnpm dev                                  # Node server with reload, http://localhost:3001 (API_PORT), against Supabase
+pnpm test                                 # whole suite; needs `docker compose up -d db` (root)
+pnpm exec vitest run test/me.test.ts      # one file
+pnpm exec vitest run -t "creates the profile"   # tests whose name matches
+pnpm lint
+pnpm typecheck
+pnpm exec hono routes                     # list routes (loads src/index.ts)
+export TOKEN=$(pnpm --silent dev:token)   # Supabase access token for TEST_USER/TEST_PASS from .env
+```
+
+The suite builds its own app and never reads `DATABASE_URL`; the vitest config removes it from the test process. It uses `TEST_DATABASE_URL` (default `postgres://pollux:pollux@localhost:5433/pollux_test`), which must be local and name a `*test*` database, because every run drops and recreates it.
+
+### Trying the app by hand
+
+- **In-process, against the local test DB** (preferred for writes). `API_AUTH_VERIFIER=test` selects the test verifier, where the bearer token is just a user id; pass the id through an env var:
+  ```bash
+  API_AUTH_VERIFIER=test DATABASE_URL=postgres://pollux:pollux@localhost:5433/pollux_test \
+    pnpm exec hono request /me -H "Authorization: Bearer $USER_ID"
+  ```
+- **Real sign-in against Supabase** (the manual check for auth): `pnpm dev`, then `export TOKEN=$(pnpm --silent dev:token)` and `curl localhost:3001/me -H "Authorization: Bearer $TOKEN"`. It answers with the Gio Pack business for the seeded `TEST_USER`.
+
+## Structure
+
+- `src/app.ts`: **`createApp({ db, verifyToken })`**, the app factory, and `AppType`. It mounts the session middleware and every module router, chained. It throws if given the test verifier when `NODE_ENV=production`.
+- `src/index.ts`: the app built from env, exported as default. It is the entry for the Hono CLI and for Vercel (whose Hono support serves the default export of `src/index.ts`; on Vercel it uses `DATABASE_POOLER_URL` with `prepare: false`). `src/server.ts` serves it on Node.
+- `src/auth/verifier.ts`: the Supabase verifier (JWKS at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`, issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`) and the test verifier.
+- `src/auth/session.ts`: the **session** middleware (token → 401, first-sight `profiles` row, business from `X-Business-Id` → 403 unless a member, or the only membership) and **`requireBusiness`**. Mount `requireBusiness` on every business-scoped router: it guarantees `c.var.businessId` is a string (403 `no_business`, 400 `business_not_selected`). `/me` is the only route without it.
+- `src/routes/<module>.ts`: one Hono sub-router per module, mounted in `createApp`.
+- `src/errors.ts`: `ApiError` and the error handler. `src/validator.ts`: `validate(target, schema)`, the `zValidator` wrapper to use for every request schema.
+- `test/`: `global-setup.ts` prepares the test DB; `fixtures.ts` has `setupTestApp()` (users, businesses, `request(path, { as, businessId })`).
 
 ## Stack
 
@@ -40,11 +72,18 @@ The stack is decided, but the app has **not been scaffolded yet**. Once it is, a
 - **Every request is tenant-scoped.** Middleware authenticates the user (Supabase Auth JWT), resolves the active `business_id` and checks it against `app.business_members`. That `business_id` goes on the request context, and **every query filters by it**. Never take `business_id` from a request body without checking membership. Tenant isolation lives here, not in RLS (see `db/CLAUDE.md`).
 - **The payment method belongs to the delivery or payment, not the customer** (see the root `CLAUDE.md`). Never model customer "types" for cuenta corriente vs. contado.
 - **Export the app's type** (`export type AppType = typeof app`) so the dashboard can use it with `hc<AppType>()`. Chain route definitions so the types carry through.
-- **Put Zod request schemas that the dashboard also uses** (e.g. order forms) in a shared workspace package rather than duplicating them.
+- **Put Zod request schemas that the dashboard also uses** (e.g. order forms) in `@pollux/contracts` (`packages/contracts`), next to the enum values, `cuitSchema` and the money helpers.
+- **Errors are `{ error: { code, message, details? } }`**: throw an `ApiError(status, code, message)` with a stable English slug and a Spanish message. Validation errors are 400 `validation_error` with `details` mapping each field path to its messages. Zod's own messages are in Spanish (`z.locales.es()`, set in `src/app.ts`).
+
+## Tests
+
+- **One seam: HTTP through the factory.** Each test file calls `setupTestApp()`, creates its own business with the fixtures, and drives everything else with `request(...)`. Assert on responses and later reads; leave services and tables out of assertions. Only setup data (users, businesses, memberships) is inserted directly.
+- **Test names describe business behavior** in `GLOSSARY.md` terms.
+- `packages/contracts` has its own unit tests (`pnpm --filter @pollux/contracts test`) for the CUIT and money helpers.
 
 ## Hono guidance and tooling
 
 - **Use the `hono` skill** for Hono APIs (routing, middleware, validation, RPC client, testing). For anything beyond it, fetch the current docs from hono.dev as the skill describes, rather than relying on memory.
 - **Hono CLI (`@hono/cli`) for quick checks, Vitest for proof.** Use `hono routes`, `hono request` and `hono batch` to inspect routes and try flows in-process while building, instead of throwaway scripts or a running dev server. They don't replace tests: a ticket's behavior is proven by Vitest HTTP tests against the local test Postgres.
-- **pnpm, not npm:** install and run it as a dev dependency of this app (`pnpm add -D @hono/cli`, `pnpm exec hono …`), not with the `npm`/`npx` commands the skill shows.
+- **pnpm, not npm:** it's a dev dependency of this app, run with `pnpm exec hono …`, not with the `npm`/`npx` commands the skill shows. It's pinned to the `1.0.0-rc` line (`@hono/cli@next`), because the stable `0.1.x` has no `routes`, `batch` or `snapshot`. Move to the stable release once 1.0 ships.
 - **The CLI needs a default app module.** The app is built by a factory, so the module the CLI loads (default `src/index.ts`) must build a ready app from env: the DB from `.env`, and the real Supabase verifier unless a dev flag selects the test verifier. Point it at the local test DB, not Supabase, when trying writes. Never pass tokens or passwords as CLI arguments; use env vars, as the skill says.
