@@ -6,7 +6,7 @@ async function createCategory(page: Page, name: string) {
   const dialog = page.getByRole('dialog', { name: 'Nueva categoría' })
   await dialog.getByRole('textbox', { name: 'Nombre' }).fill(name)
   await dialog.getByRole('button', { name: 'Crear categoría' }).click()
-  await expect(page.getByRole('link', { name })).toBeVisible()
+  await expect(page.getByRole('link', { name, exact: true })).toBeVisible()
 }
 
 test('the owner creates a Product, changes its Price and sees the price history', { tag: '@desktop' }, async ({ page, createOwner, signIn }) => {
@@ -127,7 +127,7 @@ test('the owner browses the catalog by Category and searches it', async ({ page,
 
   // A Category on the Categories screen opens the catalog filtered by it.
   await page.goto('/productos/categorias')
-  await page.getByRole('link', { name: 'Descartables' }).click()
+  await page.getByRole('link', { name: 'Descartables', exact: true }).click()
   await expect(page.getByRole('link', { name: /Vaso térmico 180 cc/ })).toBeVisible()
   await expect(page.getByRole('link', { name: /Lavandina/ })).toHaveCount(0)
 
@@ -148,8 +148,8 @@ test('the owner renames a Category', async ({ page, createOwner, signIn }) => {
   await dialog.getByRole('textbox', { name: 'Nombre' }).fill('Limpieza')
   await dialog.getByRole('button', { name: 'Guardar nombre' }).click()
 
-  await expect(page.getByRole('link', { name: 'Limpieza' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Limpiesa' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Limpieza', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Limpiesa', exact: true })).toHaveCount(0)
 
   // A name already in use is refused with the API's message.
   await createCategory(page, 'Bolsas')
