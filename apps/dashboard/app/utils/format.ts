@@ -2,7 +2,7 @@
  * How the dashboard shows values to people: es-AR money, dates and CUIT, and the Spanish label
  * of every enum. Pure functions, auto-imported by Nuxt, unit-tested in `test/format.test.ts`.
  */
-import type { Money, PaymentMethod, StockAdjustmentReason, VatCondition } from '@pollux/contracts'
+import type { Money, PaymentMethod, Percent, StockAdjustmentReason, VatCondition } from '@pollux/contracts'
 
 /** Argentina's time zone, for timestamps. Calendar dates (`yyyy-mm-dd`) never go through one. */
 export const TIME_ZONE = 'America/Argentina/Buenos_Aires'
@@ -15,6 +15,18 @@ const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS
  */
 export function formatMoney(value: Money): string {
   return money.format(value as `${number}`)
+}
+
+const percent = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 })
+/** es-AR puts a non-breaking space before `%`; a code point, so it can't hide in the source. */
+const NO_BREAK_SPACE = String.fromCharCode(0xA0)
+
+/**
+ * `"10.50"` → `"10,5 %"` (with a non-breaking space, as es-AR writes percentages). For VAT rates
+ * and Discounts, which travel as decimal strings; formatted from the string, never a float.
+ */
+export function formatPercent(value: Percent): string {
+  return `${percent.format(value as `${number}`)}${NO_BREAK_SPACE}%`
 }
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/

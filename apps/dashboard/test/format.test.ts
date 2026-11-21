@@ -3,6 +3,7 @@ import {
   balanceEntryTypeLabels,
   formatDate,
   formatMoney,
+  formatPercent,
   maskCuit,
   orderStatusLabels,
   paymentMethodLabels,
@@ -13,6 +14,15 @@ import {
 
 // Intl separates the currency sign with a non-breaking space.
 const NBSP = ' '
+
+describe('formatPercent', () => {
+  it('shows a VAT rate with a decimal comma and no trailing zeros', () => {
+    expect(formatPercent('21.00')).toBe(`21${NBSP}%`)
+    expect(formatPercent('10.50')).toBe(`10,5${NBSP}%`)
+    expect(formatPercent('2.50')).toBe(`2,5${NBSP}%`)
+    expect(formatPercent('0.00')).toBe(`0${NBSP}%`)
+  })
+})
 
 describe('formatMoney', () => {
   it('shows ARS with dots for thousands and a comma for cents', () => {
