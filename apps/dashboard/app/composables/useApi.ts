@@ -37,7 +37,9 @@ export interface ApiRequestOptions {
   navigate?: boolean
 }
 
-type Client = ReturnType<typeof hc<AppType>>
+/** The typed Hono client of apps/api, e.g. for `InferResponseType<ApiClient['me']['$get'], 200>`. */
+export type ApiClient = ReturnType<typeof hc<AppType>>
+type Client = ApiClient
 /** The body of the successful responses of an endpoint. */
 type SuccessBody<R> = R extends ClientResponse<infer T, infer S, 'json'> ? (S extends 200 | 201 ? T : never) : never
 
