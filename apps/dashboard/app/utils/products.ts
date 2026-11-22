@@ -1,4 +1,4 @@
-import { priceSchema, productCreateSchema, productUpdateSchema } from '@pollux/contracts'
+import { categoryPriceUpdateSchema, percentSchema, priceSchema, productCreateSchema, productUpdateSchema } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
 import { z } from 'zod'
 import type { ApiClient } from '~/composables/useApi'
@@ -7,6 +7,8 @@ import type { ApiClient } from '~/composables/useApi'
 export type Product = InferResponseType<ApiClient['products'][':id']['$get'], 200>
 export type Category = InferResponseType<ApiClient['categories']['$get'], 200>['items'][number]
 export type PriceChange = InferResponseType<ApiClient['products'][':id']['price-history']['$get'], 200>['items'][number]
+/** What a Category Price update changes (or would change): the Category, the percent and each Active Product. */
+export type CategoryPriceUpdatePlan = InferResponseType<ApiClient['categories'][':id']['price-update']['preview']['$post'], 200>
 
 /**
  * A Price as typed in es-AR ("1.234,50", "1234,50") or with a point ("1234.50"), turned into the
@@ -27,6 +29,36 @@ export const productEditFormSchema = productUpdateSchema.omit({ price: true, isA
 
 /** The Price change form. */
 export const priceChangeFormSchema = z.object({ price: priceInputSchema })
+
+/**
+ * The Category Price update form. The owner picks "Aumento" or "Rebaja" and types the percent
+ * without a sign (phone keyboards with `inputmode="decimal"` often have no minus key); the output
+ * is the signed percent the API takes, checked against the API's own limits.
+ */
+export const priceUpdateDirectionSchema = z.enum(['up', 'down'])
+/** "Aumento" (`up`) or "Rebaja" (`down`): the sign of a Category Price update's percent. */
+export type PriceUpdateDirection = z.infer<typeof priceUpdateDirectionSchema>
+
+export const categoryPriceUpdateFormSchema = z
+  .object({
+    categoryId: z.uuid({ error: 'Elegí una categoría' }),
+    direction: priceUpdateDirectionSchema,
+    percent: z
+      .string()
+      .trim()
+      .min(1, 'Ingresá el porcentaje')
+      .transform(parseDecimalInput)
+      .pipe(percentSchema)
+      .refine(value => !value.startsWith('-'), 'Ingresá el porcentaje sin signo y elegí Aumento o Rebaja')
+  })
+  .transform(({ categoryId, direction, percent }, ctx) => {
+    const parsed = categoryPriceUpdateSchema.safeParse({ percent: direction === 'down' ? `-${percent}` : percent })
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) ctx.addIssue({ code: 'custom', message: issue.message, path: ['percent'] })
+      return z.NEVER
+    }
+    return { categoryId, percent: parsed.data.percent }
+  })
 
 /** The fields of the Product form, as typed. */
 export interface ProductFormState {

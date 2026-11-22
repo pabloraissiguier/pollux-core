@@ -14,3 +14,7 @@ export type VatCondition = (typeof VAT_CONDITIONS)[number]
 /** Reason for a Stock adjustment. */
 export const STOCK_ADJUSTMENT_REASONS = ['initial_count', 'count_correction', 'breakage', 'other'] as const
 export type StockAdjustmentReason = (typeof STOCK_ADJUSTMENT_REASONS)[number]
+
+/** Order states: Pendiente, Entregado, Cancelado. Delivery is a state, not an entity (docs/adr/0002). */
+export const ORDER_STATUSES = ['pending', 'delivered', 'cancelled'] as const
+export type OrderStatus = (typeof ORDER_STATUSES)[number]

@@ -21,7 +21,7 @@ type ValidPriceHistoryQuery = z.output<typeof priceHistoryQuerySchema>
  * Stock reservado: the quantities on lines of Pending Orders for the Product in the outer query.
  * Derived on every read, never stored.
  */
-function reservedStock() {
+export function reservedStock() {
   return sql<number>`(
     select coalesce(sum(${orderLines.quantity}), 0)::int
     from ${orderLines}
