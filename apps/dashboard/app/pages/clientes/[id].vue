@@ -15,9 +15,10 @@ useSeoMeta({ title: () => customer.value?.name ?? 'Cliente' })
 /** How many Orders the page shows; the rest are in Pedidos, filtered by this Customer. */
 const RECENT_ORDERS = 5
 
+// Same key and shape as the Statement page, so going there shows the Balance straight away.
 const { data: balance } = await useAsyncData(
   `cliente-${id}-saldo`,
-  async () => (await request(c => c.customers[':id'].balance.$get({ param: { id } }))).balance
+  () => request(c => c.customers[':id'].balance.$get({ param: { id } }))
 )
 
 const { data: recentOrders } = await useAsyncData(
@@ -83,7 +84,7 @@ function onSaved(saved: Customer) {
           <div class="flex flex-wrap items-end justify-between gap-3">
             <CustomerBalanceFigure
               v-if="balance"
-              :balance="balance"
+              :balance="balance.balance"
             />
             <USkeleton
               v-else

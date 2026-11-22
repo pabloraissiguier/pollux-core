@@ -12,7 +12,8 @@ const router = useRouter()
 const { request } = useApi()
 
 // The day lives in the URL, so coming back from an Order keeps it. Today by default: reparto day.
-const day = ref(typeof route.query.fecha === 'string' && route.query.fecha ? route.query.fecha : todayInArgentina())
+const queryText = (value: unknown) => (typeof value === 'string' ? value : '')
+const day = ref(queryText(route.query.fecha) || todayInArgentina())
 // A valid day or none: a date input is empty while a date is half typed.
 const searchedDay = computed(() => (/^\d{4}-\d{2}-\d{2}$/.test(day.value) ? day.value : undefined))
 

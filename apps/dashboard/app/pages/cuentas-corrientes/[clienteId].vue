@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { debitOrCredit, statementEntryLabel } from '~/utils/balance'
+import { statementAmountText, statementEntryLabel } from '~/utils/balance'
 import type { Statement } from '~/utils/balance'
 
 /**
@@ -35,7 +35,7 @@ watch([fromDay, toDay, page], ([desde, hasta, pagina]) => {
 const backwardsRange = computed(() => !!fromDay.value && !!toDay.value && fromDay.value > toDay.value)
 
 const { data: current } = await useAsyncData(
-  `saldo-${customerId}`,
+  `cliente-${customerId}-saldo`,
   () => request(c => c.customers[':id'].balance.$get({ param: { id: customerId } }))
 )
 
@@ -58,7 +58,6 @@ const { data: statement, status } = await useAsyncData(
 )
 
 const hasRange = computed(() => !!fromDay.value || !!toDay.value)
-const sideLabels = { debit: 'Debe', credit: 'Haber' } as const
 </script>
 
 <template>
@@ -165,7 +164,7 @@ const sideLabels = { debit: 'Debe', credit: 'Haber' } as const
                   <span class="text-sm text-muted tabular-nums">{{ formatDate(entry.entryDate) }}</span>
                 </span>
                 <span class="flex shrink-0 flex-col items-end tabular-nums">
-                  <span class="text-highlighted">{{ sideLabels[debitOrCredit(entry.amount).side] }} {{ formatMoney(debitOrCredit(entry.amount).amount) }}</span>
+                  <span class="text-highlighted">{{ statementAmountText(entry.amount) }}</span>
                   <span class="text-sm text-muted">Saldo {{ formatMoney(entry.balance) }}</span>
                 </span>
               </li>

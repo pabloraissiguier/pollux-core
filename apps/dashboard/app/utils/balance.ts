@@ -1,7 +1,7 @@
 import type { Money, PaymentMethod } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
 import type { ApiClient } from '~/composables/useApi'
-import { balanceEntryTypeLabels } from './format'
+import { balanceEntryTypeLabels, formatMoney } from './format'
 import type { BalanceEntryType } from './format'
 
 /** A Customer's Balance as the API returns it: `{ customer, balance }`. */
@@ -18,8 +18,11 @@ export interface StatementEntryLabelInput {
   payment: { id: string, method: PaymentMethod } | null
 }
 
-/** How a Payment reads on a Statement: "Pago en efectivo". */
-const paymentLabels: Record<PaymentMethod, string> = {
+/**
+ * How a Payment reads as a Statement entry: "Pago en efectivo". A sentence, not the method's name
+ * (`paymentMethodLabels` in `format.ts`), so it lives with the Statement.
+ */
+const statementPaymentLabels: Record<PaymentMethod, string> = {
   cash: 'Pago en efectivo',
   bank_transfer: 'Pago por transferencia',
   check: 'Pago con cheque',
@@ -38,7 +41,7 @@ export function statementEntryLabel(entry: StatementEntryLabelInput): string {
     case 'delivery_undone':
       return entry.order ? `Entrega deshecha, pedido N° ${entry.order.number}` : balanceEntryTypeLabels.delivery_undone
     case 'payment':
-      return entry.payment ? paymentLabels[entry.payment.method] : balanceEntryTypeLabels.payment
+      return entry.payment ? statementPaymentLabels[entry.payment.method] : balanceEntryTypeLabels.payment
     case 'adjustment':
       return entry.reason ? `Ajuste: ${entry.reason}` : balanceEntryTypeLabels.adjustment
     default:
@@ -52,4 +55,16 @@ export function statementEntryLabel(entry: StatementEntryLabelInput): string {
  */
 export function debitOrCredit(amount: Money): { side: 'debit' | 'credit', amount: Money } {
   return amount.startsWith('-') ? { side: 'credit', amount: amount.slice(1) } : { side: 'debit', amount }
+}
+
+/** A Statement amount in its column, in words: "Debe $ 500,00", "Haber $ 100,00". */
+export function statementAmountText(amount: Money): string {
+  const { side, amount: unsigned } = debitOrCredit(amount)
+  return `${side === 'debit' ? 'Debe' : 'Haber'} ${formatMoney(unsigned)}`
+}
+
+/** What a Balance means, in words, so it never rests on color: "Debe", "A favor del cliente", "Al día". */
+export function balanceCaption(balance: Money): string {
+  if (balance === '0.00') return 'Al día'
+  return debitOrCredit(balance).side === 'debit' ? 'Debe' : 'A favor del cliente'
 }

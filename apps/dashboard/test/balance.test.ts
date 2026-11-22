@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { debitOrCredit, statementEntryLabel } from '../app/utils/balance'
+import { balanceCaption, debitOrCredit, statementAmountText, statementEntryLabel } from '../app/utils/balance'
 import type { StatementEntryLabelInput } from '../app/utils/balance'
 
 const entry = (overrides: Partial<StatementEntryLabelInput>): StatementEntryLabelInput => ({
@@ -43,5 +43,23 @@ describe('debitOrCredit', () => {
   it('puts a positive amount in debe and a negative one in haber, without its sign', () => {
     expect(debitOrCredit('2469.00')).toEqual({ side: 'debit', amount: '2469.00' })
     expect(debitOrCredit('-500.50')).toEqual({ side: 'credit', amount: '500.50' })
+  })
+})
+
+// Intl separates the currency sign with a non-breaking space.
+const NBSP = String.fromCharCode(0xA0)
+
+describe('statementAmountText', () => {
+  it('says which column an amount goes in, without its sign', () => {
+    expect(statementAmountText('2469.00')).toBe(`Debe $${NBSP}2.469,00`)
+    expect(statementAmountText('-100.00')).toBe(`Haber $${NBSP}100,00`)
+  })
+})
+
+describe('balanceCaption', () => {
+  it('says what a Balance means in words', () => {
+    expect(balanceCaption('2969.00')).toBe('Debe')
+    expect(balanceCaption('-50.00')).toBe('A favor del cliente')
+    expect(balanceCaption('0.00')).toBe('Al día')
   })
 })

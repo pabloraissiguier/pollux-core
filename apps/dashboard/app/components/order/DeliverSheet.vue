@@ -6,7 +6,7 @@ import type { Order } from '~/utils/orders'
 
 /**
  * Entregar: the bottom sheet that marks a Pending Order Delivered in one step, from the Order or
- * the reparto list. It shows the total, how it's collected and the Delivered date (today by
+ * the reparto list. It shows the total, the Payment choice and the Delivered date (today by
  * default), and once delivered, the Customer's new Balance. Emits the delivered Order.
  *
  * "Cuenta corriente (sin pago)" is the only choice for now: Payment methods at the door come with
@@ -19,26 +19,27 @@ const emit = defineEmits<{ delivered: [order: Order] }>()
 const { request } = useApi()
 const form = useTemplateRef('form')
 
-const collectionItems = [
+const paymentItems = [
   { value: 'account', label: 'Cuenta corriente (sin pago)', description: 'El total se suma al saldo del cliente.' }
 ] as const
-type Collection = (typeof collectionItems)[number]['value']
+type PaymentChoice = (typeof paymentItems)[number]['value']
 
 const schema = z.object({
-  collection: z.enum(['account']),
+  payment: z.enum(['account']),
   deliveredOn: daySchema.refine(day => day <= todayInArgentina(), { message: 'La fecha entregada no puede ser futura' })
 })
 
-const state = reactive<{ collection: Collection, deliveredOn: string }>({ collection: 'account', deliveredOn: todayInArgentina() })
+const state = reactive<{ payment: PaymentChoice, deliveredOn: string }>({ payment: 'account', deliveredOn: todayInArgentina() })
 const delivering = ref(false)
-/** The Customer's Balance after delivering; set once delivered, which switches to the success state. */
-const newBalance = ref<string | null>(null)
+/** Whether the Order went out: switches the sheet to its success state. */
 const delivered = ref(false)
+/** The Customer's Balance right after delivering, once read. */
+const newBalance = ref<string | null>(null)
 
 // Each opening starts over, with today's date.
 watch(open, (isOpen) => {
   if (!isOpen) return
-  Object.assign(state, { collection: 'account', deliveredOn: todayInArgentina() })
+  Object.assign(state, { payment: 'account', deliveredOn: todayInArgentina() })
   delivered.value = false
   newBalance.value = null
 })
@@ -84,17 +85,12 @@ async function onSubmit({ data }: FormSubmitEvent<z.output<typeof schema>>) {
             color="success"
             variant="subtle"
           />
-          <div
+          <CustomerBalanceFigure
             v-if="newBalance !== null"
-            class="flex flex-col items-center gap-1 py-2"
-          >
-            <span class="text-muted">Saldo de {{ order.customer.name }}</span>
-            <span
-              role="status"
-              :aria-label="`Saldo de ${order.customer.name}`"
-              class="text-3xl font-semibold text-highlighted tabular-nums"
-            >{{ formatMoney(newBalance) }}</span>
-          </div>
+            :balance="newBalance"
+            :label="`Saldo de ${order.customer.name}`"
+            class="py-2"
+          />
           <UButton
             label="Listo"
             block
@@ -117,12 +113,12 @@ async function onSubmit({ data }: FormSubmitEvent<z.output<typeof schema>>) {
           </p>
 
           <UFormField
-            name="collection"
-            label="Cobro"
+            name="payment"
+            label="Pago"
           >
             <URadioGroup
-              v-model="state.collection"
-              :items="[...collectionItems]"
+              v-model="state.payment"
+              :items="[...paymentItems]"
               variant="card"
             />
           </UFormField>
