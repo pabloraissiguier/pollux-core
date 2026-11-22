@@ -1,16 +1,25 @@
 import {
+  balanceAdjustmentSchema,
   branchSchema,
   branchUpdateSchema,
   customerCreateSchema,
   customerListQuerySchema,
+  customersWithBalanceQuerySchema,
   customerStatementQuerySchema,
   customerUpdateSchema,
+  openingBalanceSchema,
 } from '@pollux/contracts'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { requireBusiness } from '../auth/session'
 import type { AppEnv } from '../context'
-import { getCustomerBalance, getCustomerStatement } from '../services/balance'
+import {
+  addBalanceAdjustment,
+  addOpeningBalance,
+  getCustomerBalance,
+  getCustomerStatement,
+  listCustomersWithBalance,
+} from '../services/balance'
 import {
   addBranch,
   createCustomer,
@@ -38,6 +47,10 @@ export const customerRoutes = new Hono<AppEnv>()
   .get('/towns', async (c) => {
     return c.json(await listTowns(c.var.db, c.var.businessId), 200)
   })
+  // Before `/:id`, like `/towns`.
+  .get('/with-balance', validate('query', customersWithBalanceQuerySchema), async (c) => {
+    return c.json(await listCustomersWithBalance(c.var.db, c.var.businessId, c.req.valid('query')), 200)
+  })
   .post('/', validate('json', customerCreateSchema), async (c) => {
     const customer = await createCustomer(c.var.db, c.var.businessId, c.req.valid('json'))
     return c.json(customer, 201)
@@ -64,4 +77,12 @@ export const customerRoutes = new Hono<AppEnv>()
   .get('/:id/statement', validate('param', customerParam), validate('query', customerStatementQuerySchema), async (c) => {
     const { db, businessId } = c.var
     return c.json(await getCustomerStatement(db, businessId, c.req.valid('param').id, c.req.valid('query')), 200)
+  })
+  .post('/:id/opening-balance', validate('param', customerParam), validate('json', openingBalanceSchema), async (c) => {
+    const { db, businessId, profileId } = c.var
+    return c.json(await addOpeningBalance(db, businessId, profileId, c.req.valid('param').id, c.req.valid('json')), 201)
+  })
+  .post('/:id/balance-adjustments', validate('param', customerParam), validate('json', balanceAdjustmentSchema), async (c) => {
+    const { db, businessId, profileId } = c.var
+    return c.json(await addBalanceAdjustment(db, businessId, profileId, c.req.valid('param').id, c.req.valid('json')), 201)
   })

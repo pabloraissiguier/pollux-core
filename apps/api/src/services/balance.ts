@@ -1,11 +1,22 @@
-import type { customerStatementQuerySchema } from '@pollux/contracts'
+import type {
+  balanceAdjustmentSchema,
+  customersWithBalanceQuerySchema,
+  customerStatementQuerySchema,
+  openingBalanceSchema,
+} from '@pollux/contracts'
 import { balanceEntries, customers, orders, payments } from '@pollux/db/schema'
-import { and, asc, count, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, lte, ne, sql } from 'drizzle-orm'
 import type { z } from 'zod'
-import type { DbOrTx } from '../db'
+import { today } from '../dates'
+import type { Database, DbOrTx } from '../db'
+import { ApiError } from '../errors'
+import { isUniqueViolation } from '../pg-errors'
 import { assertCustomer, customerNotFound, isCustomer } from './customers'
 
 type ValidStatementQuery = z.output<typeof customerStatementQuerySchema>
+type ValidOpeningBalance = z.output<typeof openingBalanceSchema>
+type ValidBalanceAdjustment = z.output<typeof balanceAdjustmentSchema>
+type ValidCustomersWithBalanceQuery = z.output<typeof customersWithBalanceQuerySchema>
 
 /** The Customer's id and name, or 404 when it isn't in this business. */
 async function findCustomer(db: DbOrTx, businessId: string, customerId: string) {
@@ -101,5 +112,90 @@ export async function getCustomerStatement(db: DbOrTx, businessId: string, custo
       createdAt: r.createdAt,
     })),
     total: counted!.total,
+  }
+}
+
+interface ManualEntry {
+  type: 'opening_balance' | 'adjustment'
+  amount: string
+  entryDate: string
+  reason: string | null
+}
+
+/**
+ * Inserts an Opening balance or a Balance adjustment and answers with the Customer's Balance
+ * after it plus the new entry: `{ customer, balance, entry }`. One transaction, so the Balance
+ * answered is the one right after this entry.
+ */
+function addManualEntry(db: Database, businessId: string, profileId: string, customerId: string, input: ManualEntry) {
+  return db.transaction(async (tx) => {
+    await assertCustomer(tx, businessId, customerId)
+    const [entry] = await tx
+      .insert(balanceEntries)
+      .values({ businessId, customerId, createdBy: profileId, ...input })
+      .returning({
+        id: balanceEntries.id,
+        type: balanceEntries.type,
+        entryDate: balanceEntries.entryDate,
+        amount: balanceEntries.amount,
+        reason: balanceEntries.reason,
+        createdAt: balanceEntries.createdAt,
+      })
+      .catch((err: unknown) => {
+        if (isUniqueViolation(err, 'balance_entries_opening_balance_key')) {
+          throw new ApiError(409, 'opening_balance_exists', 'Este cliente ya tiene un saldo inicial')
+        }
+        throw err
+      })
+    return { ...(await getCustomerBalance(tx, businessId, customerId)), entry: entry! }
+  })
+}
+
+/**
+ * Saldo inicial: the Balance the Customer carried over from before the app, on its day. Once per
+ * Customer (409 `opening_balance_exists`), enforced by a partial unique index so two sent at
+ * the same moment can't both land.
+ */
+export function addOpeningBalance(db: Database, businessId: string, profileId: string, customerId: string, input: ValidOpeningBalance) {
+  return addManualEntry(db, businessId, profileId, customerId, { type: 'opening_balance', reason: null, ...input })
+}
+
+/** Ajuste de saldo: a manual, non-zero change to the Balance with its reason, dated today by default. */
+export function addBalanceAdjustment(db: Database, businessId: string, profileId: string, customerId: string, input: ValidBalanceAdjustment) {
+  const { amount, reason, entryDate = today() } = input
+  return addManualEntry(db, businessId, profileId, customerId, { type: 'adjustment', amount, reason, entryDate })
+}
+
+/**
+ * Customers with a Balance: every Customer whose Balance isn't zero, largest first (credits last),
+ * plus `balanceTotal`, the sum of all their Balances (what the business is owed, net of credits).
+ */
+export async function listCustomersWithBalance(db: DbOrTx, businessId: string, query: ValidCustomersWithBalanceQuery) {
+  const balance = sql<string>`sum(${balanceEntries.amount})`
+  const balances = db
+    .select({ customerId: balanceEntries.customerId, balance: balance.as('balance') })
+    .from(balanceEntries)
+    .where(eq(balanceEntries.businessId, businessId))
+    .groupBy(balanceEntries.customerId)
+    .having(ne(balance, '0.00'))
+    .as('balances')
+
+  const [rows, [summary]] = await Promise.all([
+    db
+      .select({ id: customers.id, name: customers.name, balance: balances.balance })
+      .from(balances)
+      .innerJoin(customers, and(eq(customers.businessId, businessId), eq(customers.id, balances.customerId)))
+      .orderBy(desc(balances.balance), asc(customers.name), asc(customers.id))
+      .limit(query.limit)
+      .offset(query.offset),
+    db
+      .select({ total: count(), balanceTotal: sql<string>`coalesce(sum(${balances.balance}), 0.00)` })
+      .from(balances),
+  ])
+
+  return {
+    items: rows.map(r => ({ customer: { id: r.id, name: r.name }, balance: r.balance })),
+    total: summary!.total,
+    balanceTotal: summary!.balanceTotal,
   }
 }
