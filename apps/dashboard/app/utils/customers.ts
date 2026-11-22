@@ -51,6 +51,11 @@ export function customerTowns(customer: Pick<Customer, 'branches'>): string[] {
   return [...new Set(customer.branches.map(b => b.city))]
 }
 
+/** A Branch in one line: its name, if any, then its address and town. */
+export function branchLabel(branch: Pick<Branch, 'name' | 'address' | 'city'>): string {
+  return [branch.name, `${branch.address}, ${branch.city}`].filter(Boolean).join(' · ')
+}
+
 /** A `tel:` link for a phone as people type it ("03468 15-123456"): digits and a leading +. */
 export function phoneHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`

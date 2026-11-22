@@ -45,7 +45,7 @@ watch([status, searchedDate, town, customerId, page], ([estado, fecha, localidad
   router.replace({ query: { estado, fecha, localidad, cliente, pagina: pagina > 1 ? pagina : undefined } })
 })
 
-const { data: orders, status: loading } = await useAsyncData(
+const { data: orders, status: listStatus } = await useAsyncData(
   'pedidos',
   () => request(c => c.orders.$get({
     query: {
@@ -129,7 +129,7 @@ const hasFilters = computed(() => !!(status.value || searchedDate.value || town.
 
     <template #body>
       <USkeleton
-        v-if="loading === 'pending' && !orders"
+        v-if="listStatus === 'pending' && !orders"
         class="h-32 w-full"
       />
 

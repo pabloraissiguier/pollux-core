@@ -111,15 +111,18 @@ test('the owner edits a Pending Order: kept lines keep their price, new lines ta
   const customerId = await createCustomer(userId, { name: 'Kiosco La Esquina', branches: [{ address: 'Belgrano 50', city: 'Corral de Bustos' }] })
   const customer = await callApi<{ branches: { id: string }[] }>(userId, 'GET', `/customers/${customerId}`)
   const vaso = await callApi(userId, 'POST', '/products', { code: 'VAS-180', name: 'Vaso térmico 180 cc', price: '1000' })
-  await callApi(userId, 'POST', '/products', { code: 'BAN-103', name: 'Bandeja 103', price: '500' })
+  await callApi(userId, 'POST', '/stock/adjustments', { productId: vaso.id, quantity: 2, reason: 'initial_count' })
+  const bandeja = await callApi(userId, 'POST', '/products', { code: 'BAN-103', name: 'Bandeja 103', price: '500' })
+  await callApi(userId, 'POST', '/stock/adjustments', { productId: bandeja.id, quantity: 50, reason: 'initial_count' })
   const order = await callApi(userId, 'POST', '/orders', {
     customerId,
     branchId: customer.branches[0]!.id,
     deliveryDate: '2026-12-01',
     lines: [{ productId: vaso.id, quantity: 2 }]
   })
-  // The Price goes up after the Order was taken.
+  // Prices go up after the Order was taken.
   await callApi(userId, 'PATCH', `/products/${vaso.id}`, { price: '1200' })
+  await callApi(userId, 'PATCH', `/products/${bandeja.id}`, { price: '600' })
   await signIn(userId)
   await expect(page).toHaveURL('/')
 
@@ -130,15 +133,22 @@ test('the owner edits a Pending Order: kept lines keep their price, new lines ta
 
   const lines = page.getByRole('region', { name: 'Productos del pedido' })
   const vasoLine = lines.getByRole('listitem').filter({ hasText: 'Vaso térmico 180 cc' })
-  await expect(vasoLine).toContainText('$ 1.000,00')
+  await expect(vasoLine).toContainText('$ 1.000,00 c/u (precio del pedido)')
   await expect(page.getByRole('status', { name: 'Total del pedido' })).toHaveText('$ 2.000,00')
+  // The Order already holds the 2 units on hand, so there's no shortage yet.
+  await expect(vasoLine).not.toContainText('Sin stock suficiente')
 
+  // One more than what's on hand warns at once, on a kept line too.
   await lines.getByRole('button', { name: 'Sumar uno a Vaso térmico 180 cc' }).click()
+  await expect(vasoLine).toContainText('Sin stock suficiente: el disponible quedaría en -1')
+
   const picker = page.getByRole('region', { name: 'Agregar productos' })
   await picker.getByRole('searchbox', { name: 'Buscar producto' }).fill('bandeja')
   await picker.getByRole('button', { name: 'Agregar Bandeja 103' }).click()
-  // 3 × 1.000 (kept price) + 1 × 500.
-  await expect(page.getByRole('status', { name: 'Total del pedido' })).toHaveText('$ 3.500,00')
+  await expect(lines.getByRole('listitem').filter({ hasText: 'Bandeja 103' })).toContainText('$ 600,00 c/u (precio actual)')
+  await page.getByRole('textbox', { name: 'Descuento del pedido' }).fill('10')
+  // 3 × 1.000 (kept price) + 1 × 600 (today's Price) = 3.600, less 10 %.
+  await expect(page.getByRole('status', { name: 'Total del pedido' })).toHaveText('$ 3.240,00')
 
   const writes = watchOrderWrites(page)
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
@@ -147,7 +157,9 @@ test('the owner edits a Pending Order: kept lines keep their price, new lines ta
   const detailLines = page.getByRole('region', { name: 'Productos' }).getByRole('listitem')
   await expect(detailLines).toHaveCount(2)
   await expect(detailLines.first()).toContainText('3 × $ 1.000,00')
-  await expect(page.getByRole('region', { name: 'Totales' })).toContainText('Total$ 3.500,00')
+  await expect(detailLines.last()).toContainText('1 × $ 600,00')
+  await expect(page.getByRole('region', { name: 'Totales' })).toContainText('Descuento del pedido (10 %)-$ 360,00')
+  await expect(page.getByRole('region', { name: 'Totales' })).toContainText('Total$ 3.240,00')
 })
 
 test('the owner finds Orders by town and Customer, and cancels one after confirming', async ({ page, createOwner, signIn, createCustomer, callApi }) => {

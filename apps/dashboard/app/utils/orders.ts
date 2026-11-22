@@ -1,4 +1,4 @@
-import { discountPercentSchema, orderCreateSchema, orderLineSchema, orderTotals } from '@pollux/contracts'
+import { discountPercentSchema, lineSubtotal, orderCreateSchema, orderLineSchema, orderTotals } from '@pollux/contracts'
 import type { Money, OrderStatus } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
 import { z } from 'zod'
@@ -77,10 +77,32 @@ export const orderFormSchema = z.object({
 })
 export type OrderFormOutput = z.output<typeof orderFormSchema>
 
+/** No Discount, as the API writes it. */
+const NO_DISCOUNT = '0.00'
+
+/** Whether a stored Discount (`"10.00"`) takes anything off. */
+export function hasDiscount(percent: string): boolean {
+  return percent !== NO_DISCOUNT
+}
+
 /** A typed Discount as the API's decimal string, or none while it's still invalid. */
 function discountOrNone(typed: string): string {
   const parsed = discountInputSchema.safeParse(typed)
-  return parsed.success ? parsed.data : '0.00'
+  return parsed.success ? parsed.data : NO_DISCOUNT
+}
+
+/** A stepper's quantity, or 0 while it's empty or half typed. */
+export function typedQuantity(quantity: number): number {
+  return Number.isInteger(quantity) && quantity > 0 ? quantity : 0
+}
+
+function lineForTotals(line: OrderFormLine) {
+  return { quantity: typedQuantity(line.quantity), unitPrice: line.unitPrice, discountPercent: discountOrNone(line.discountPercent) }
+}
+
+/** A line's subtotal while typing, after its own Discount. */
+export function lineFormSubtotal(line: OrderFormLine): Money {
+  return lineSubtotal(lineForTotals(line))
 }
 
 /**
@@ -88,14 +110,7 @@ function discountOrNone(typed: string): string {
  * still being typed counts as none; the API's figures on save are the authority.
  */
 export function orderFormTotals(state: Pick<OrderFormState, 'lines' | 'discountPercent'>) {
-  return orderTotals(
-    state.lines.map(line => ({
-      quantity: Number.isInteger(line.quantity) && line.quantity > 0 ? line.quantity : 0,
-      unitPrice: line.unitPrice,
-      discountPercent: discountOrNone(line.discountPercent)
-    })),
-    discountOrNone(state.discountPercent)
-  )
+  return orderTotals(state.lines.map(lineForTotals), discountOrNone(state.discountPercent))
 }
 
 /**
@@ -109,11 +124,14 @@ export function availableAfter(line: OrderFormLine): number | null {
 
 /** `"10.00"` → `"10"`, a stored Discount ready to edit, written the es-AR way. */
 export function discountForInput(percent: string): string {
-  return percent === '0.00' ? '' : percent.replace(/\.?0+$/, '').replace('.', ',')
+  return !hasDiscount(percent) ? '' : percent.replace(/\.?0+$/, '').replace('.', ',')
 }
 
-/** The form for editing a saved Order: its lines are kept, with their frozen prices. */
-export function orderFormStateFrom(order: Order): OrderFormState {
+/**
+ * The form for editing a saved Order: its lines are kept, with their frozen prices. `available`
+ * is each Product's Available stock now, which already counts what this Order reserved.
+ */
+export function orderFormStateFrom(order: Order, available: Record<string, number> = {}): OrderFormState {
   return {
     customerId: order.customer.id,
     branchId: order.branch.id,
@@ -127,7 +145,7 @@ export function orderFormStateFrom(order: Order): OrderFormState {
       unitPrice: line.unitPrice,
       quantity: line.quantity,
       reservedByOrder: line.quantity,
-      available: null,
+      available: available[line.product.id] ?? null,
       discountPercent: discountForInput(line.discountPercent)
     }))
   }

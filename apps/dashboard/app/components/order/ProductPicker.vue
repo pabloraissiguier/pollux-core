@@ -9,7 +9,7 @@ defineProps<{ inOrder: Record<string, number> }>()
 const emit = defineEmits<{ add: [product: Product] }>()
 
 const SEARCH_DELAY_MS = 250
-const RESULTS = 50
+const RESULT_LIMIT = 50
 
 const { request } = useApi()
 const { data: categories } = await useCategories()
@@ -37,7 +37,7 @@ const { data: products, status } = await useAsyncData(
           q: searchedText.value || undefined,
           categoryId: categoryId.value || undefined,
           active: 'true',
-          limit: String(RESULTS)
+          limit: String(RESULT_LIMIT)
         }
       }))
     : Promise.resolve(null),
@@ -123,10 +123,10 @@ const { data: products, status } = await useAsyncData(
           </span>
           <span
             class="flex items-center gap-1 text-sm tabular-nums"
-            :class="product.stock.available <= 0 ? 'text-error' : 'text-muted'"
+            :class="product.stock.available < 0 ? 'text-error' : 'text-muted'"
           >
             <UIcon
-              v-if="product.stock.available <= 0"
+              v-if="product.stock.available < 0"
               name="i-lucide-triangle-alert"
               class="size-4 shrink-0"
             />

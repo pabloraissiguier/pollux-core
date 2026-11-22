@@ -103,7 +103,7 @@ async function cancel() {
             <dt class="text-muted">
               Sucursal
             </dt>
-            <dd>{{ [order.branch.name, `${order.branch.address}, ${order.branch.city}`].filter(Boolean).join(' · ') }}</dd>
+            <dd>{{ branchLabel(order.branch) }}</dd>
             <dt class="text-muted">
               Fecha de entrega
             </dt>
@@ -154,7 +154,7 @@ async function cancel() {
                 <span class="flex min-w-0 flex-col">
                   <span class="font-medium text-highlighted">{{ line.product.name }}</span>
                   <span class="text-sm text-muted tabular-nums">
-                    {{ formatUnits(line.quantity) }} × {{ formatMoney(line.unitPrice) }}<template v-if="line.discountPercent !== '0.00'"> · Descuento {{ formatPercent(line.discountPercent) }}</template>
+                    {{ formatUnits(line.quantity) }} × {{ formatMoney(line.unitPrice) }}<template v-if="hasDiscount(line.discountPercent)"> · Descuento {{ formatPercent(line.discountPercent) }}</template>
                   </span>
                 </span>
                 <span class="shrink-0 font-medium text-highlighted tabular-nums">{{ formatMoney(line.subtotal) }}</span>
@@ -168,13 +168,13 @@ async function cancel() {
               class="flex flex-col gap-1 tabular-nums"
             >
               <p
-                v-if="order.discountPercent !== '0.00'"
+                v-if="hasDiscount(order.discountPercent)"
                 class="flex justify-between gap-3 text-muted"
               >
                 <span>Subtotal</span><span>{{ formatMoney(order.totals.subtotal) }}</span>
               </p>
               <p
-                v-if="order.discountPercent !== '0.00'"
+                v-if="hasDiscount(order.discountPercent)"
                 class="flex justify-between gap-3 text-muted"
               >
                 <span>Descuento del pedido ({{ formatPercent(order.discountPercent) }})</span><span>-{{ formatMoney(order.totals.discountAmount) }}</span>

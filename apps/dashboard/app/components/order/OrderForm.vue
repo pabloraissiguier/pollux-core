@@ -12,14 +12,14 @@ import type { Product } from '~/utils/products'
  * With `order`, it edits that Pending Order: its Customer is fixed (`customer` gives its Branches)
  * and its lines keep their frozen prices.
  */
-const props = defineProps<{ order?: Order, customer?: CustomerOption }>()
+const props = defineProps<{ order?: Order, customer?: CustomerOption, available?: Record<string, number> }>()
 const emit = defineEmits<{ saved: [order: SavedOrder] }>()
 
 const { request } = useApi()
 const form = useTemplateRef('form')
 
 const state = reactive<OrderFormState>(props.order
-  ? orderFormStateFrom(props.order)
+  ? orderFormStateFrom(props.order, props.available)
   : { customerId: undefined, branchId: undefined, deliveryDate: tomorrowInArgentina(), discountPercent: '', notes: '', lines: [] })
 
 const customer = ref<CustomerOption | undefined>(props.customer)
@@ -29,20 +29,17 @@ watch(customer, (picked) => {
   state.branchId = picked?.branches.length === 1 ? picked.branches[0]!.id : undefined
 })
 const branches = computed(() => customer.value?.branches ?? [])
-const branchItems = computed(() => branches.value.map(b => ({
-  value: b.id,
-  label: [b.name, `${b.address}, ${b.city}`].filter(Boolean).join(' · ')
-})))
+const branchItems = computed(() => branches.value.map(b => ({ value: b.id, label: branchLabel(b) })))
 
 const totals = computed(() => orderFormTotals(state))
 const inOrder = computed(() => Object.fromEntries(state.lines.map(l => [l.productId, l.quantity])))
-const units = computed(() => state.lines.reduce((sum, l) => sum + (Number.isInteger(l.quantity) ? l.quantity : 0), 0))
+const units = computed(() => state.lines.reduce((sum, l) => sum + typedQuantity(l.quantity), 0))
 
 /** Adds one unit of the Product: a new line at its current Price, or one more on its line. */
 function addProduct(product: Product) {
   const line = state.lines.find(l => l.productId === product.id)
   if (line) {
-    line.quantity = (Number.isInteger(line.quantity) ? line.quantity : 0) + 1
+    line.quantity = typedQuantity(line.quantity) + 1
     // Available stock now known; it already counts what this Order reserved.
     line.available = product.stock.available
     return
@@ -196,7 +193,7 @@ async function onSubmit({ data }: FormSubmitEvent<OrderFormOutput>) {
                 <div class="flex items-start justify-between gap-3">
                   <span class="flex min-w-0 flex-col">
                     <span class="font-medium text-highlighted">{{ line.product.name }}</span>
-                    <span class="text-sm text-muted tabular-nums">{{ line.product.code }} · {{ formatMoney(line.unitPrice) }} c/u</span>
+                    <span class="text-sm text-muted tabular-nums">{{ line.product.code }} · {{ formatMoney(line.unitPrice) }} c/u<template v-if="order"> ({{ line.id ? 'precio del pedido' : 'precio actual' }})</template></span>
                   </span>
                   <UButton
                     icon="i-lucide-trash-2"
@@ -234,7 +231,7 @@ async function onSubmit({ data }: FormSubmitEvent<OrderFormOutput>) {
                     </UInput>
                   </UFormField>
                   <span class="ms-auto self-center font-medium text-highlighted tabular-nums">
-                    {{ formatMoney(orderFormTotals({ lines: [line], discountPercent: '' }).subtotal) }}
+                    {{ formatMoney(lineFormSubtotal(line)) }}
                   </span>
                 </div>
 

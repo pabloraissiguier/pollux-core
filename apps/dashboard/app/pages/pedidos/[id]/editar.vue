@@ -6,11 +6,17 @@ const { request } = useApi()
 const toast = useToast()
 const id = String(route.params.id)
 
-// The Order and its Customer's Branches, which a Pending Order can move between.
+// The Order, its Customer's Branches (a Pending Order can move between them) and the Available
+// stock of its Products, so a kept line warns as soon as it asks for more than there is.
 const { data, status } = await useAsyncData(`pedido-${id}-editar`, async () => {
   const order = await request(c => c.orders[':id'].$get({ param: { id } }))
-  const customer = await request(c => c.customers[':id'].$get({ param: { id: order.customer.id } }))
-  return { order, customer }
+  const productIds = [...new Set(order.lines.map(l => l.product.id))]
+  const [customer, products] = await Promise.all([
+    request(c => c.customers[':id'].$get({ param: { id: order.customer.id } })),
+    Promise.all(productIds.map(productId => request(c => c.products[':id'].$get({ param: { id: productId } }))))
+  ])
+  const available = Object.fromEntries(products.map(p => [p.id, p.stock.available]))
+  return { order, customer, available }
 })
 
 useSeoMeta({ title: () => (data.value ? `Editar pedido N° ${data.value.order.number}` : 'Editar pedido') })
@@ -33,6 +39,7 @@ async function onSaved(order: SavedOrder) {
     v-if="data?.order.status === 'pending'"
     :order="data.order"
     :customer="data.customer"
+    :available="data.available"
     @saved="onSaved"
   />
 
