@@ -216,14 +216,23 @@ export async function createOrder(db: Database, businessId: string, profileId: s
   })
 }
 
-/** Locks the Order row and refuses anything but a Pending Order. */
-async function lockPendingOrder(tx: Transaction, businessId: string, orderId: string) {
+/**
+ * Locks the Order row (`FOR UPDATE`) and returns its Customer and status, or 404 when it isn't
+ * in this business. Every change to an Order locks it first, then its Products.
+ */
+export async function lockOrder(tx: Transaction, businessId: string, orderId: string) {
   const [order] = await tx
     .select({ customerId: orders.customerId, status: orders.status })
     .from(orders)
     .where(isOrder(businessId, orderId))
     .for('update')
   if (!order) throw orderNotFound()
+  return order
+}
+
+/** Locks the Order row and refuses anything but a Pending Order. */
+async function lockPendingOrder(tx: Transaction, businessId: string, orderId: string) {
+  const order = await lockOrder(tx, businessId, orderId)
   if (order.status !== 'pending') throw orderNotPending()
   return order
 }
