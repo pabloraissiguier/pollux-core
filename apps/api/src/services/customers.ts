@@ -10,6 +10,7 @@ import { and, asc, count, eq, exists, ilike, inArray, or, sql } from 'drizzle-or
 import type { z } from 'zod'
 import type { Database, DbOrTx } from '../db'
 import { ApiError } from '../errors'
+import { cuitContains, likeContains } from '../like'
 
 // Validated request bodies, after the shared schemas' transforms (e.g. CUIT formatted, '' → null).
 type ValidCustomerCreate = z.output<typeof customerCreateSchema>
@@ -162,26 +163,19 @@ export async function listTowns(db: DbOrTx, businessId: string) {
   return { items: [...byTown.values()].map(t => t.city).sort(spanish.compare) }
 }
 
-/** Escapes `%`, `_` and `\` so user text matches literally inside a LIKE pattern. */
-function likeContains(text: string) {
-  return `%${text.replace(/[\\%_]/g, c => `\\${c}`)}%`
-}
-
 /**
  * Customers by name, with their Branches. `q` matches name, legal name or CUIT (with or without
  * dashes); `town` keeps Customers with a Branch in that town (case-insensitive).
  */
 export async function listCustomers(db: Database, businessId: string, query: ValidCustomerListQuery) {
   const { q, town, limit, offset } = query
-  // CUITs are stored as XX-XXXXXXXX-X, so both sides are compared without dashes.
-  const cuitQuery = q?.replace(/-/g, '')
   const where = and(
     eq(customers.businessId, businessId),
     q
       ? or(
           ilike(customers.name, likeContains(q)),
           ilike(customers.legalName, likeContains(q)),
-          cuitQuery ? sql`replace(${customers.cuit}, '-', '') ilike ${likeContains(cuitQuery)}` : undefined,
+          cuitContains(customers.cuit, q),
         )
       : undefined,
     town

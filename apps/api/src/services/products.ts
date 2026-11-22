@@ -9,6 +9,7 @@ import { and, asc, count, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Database, DbOrTx, Transaction } from '../db'
 import { ApiError } from '../errors'
+import { likeContains } from '../like'
 import { isUniqueViolation } from '../pg-errors'
 import { assertCategory } from './categories'
 
@@ -177,11 +178,6 @@ export async function updateProduct(
     }
     return getProduct(tx, businessId, productId)
   })
-}
-
-/** Escapes `%`, `_` and `\` so user text matches literally inside a LIKE pattern. */
-function likeContains(text: string) {
-  return `%${text.replace(/[\\%_]/g, c => `\\${c}`)}%`
 }
 
 /**

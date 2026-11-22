@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { cuitSchema } from './cuit'
+import { optionalCuitSchema } from './cuit'
 import { VAT_CONDITIONS } from './enums'
 import { paginationSchema } from './pagination'
 
@@ -32,13 +32,7 @@ export type BranchUpdateInput = z.input<typeof branchUpdateSchema>
 const customerFields = z.object({
   name: requiredText(200, 'Ingresá el nombre'),
   legalName: optionalText(200),
-  /** Checked for format and check digit; stored as `XX-XXXXXXXX-X`. Empty means none. */
-  cuit: z
-    .string()
-    .trim()
-    .transform(v => (v === '' ? null : v))
-    .pipe(cuitSchema.nullable())
-    .nullish(),
+  cuit: optionalCuitSchema,
   vatCondition: z.enum(VAT_CONDITIONS).nullish(),
   phone: optionalText(50),
   notes: optionalText(1000),

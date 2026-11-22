@@ -32,3 +32,14 @@ export const cuitSchema = z
   .string()
   .refine(isValidCuit, { message: 'El CUIT no es válido' })
   .transform(formatCuit)
+
+/**
+ * An optional CUIT field: checked for format and check digit, stored as `XX-XXXXXXXX-X`.
+ * Empty means none (null).
+ */
+export const optionalCuitSchema = z
+  .string()
+  .trim()
+  .transform(v => (v === '' ? null : v))
+  .pipe(cuitSchema.nullable())
+  .nullish()
