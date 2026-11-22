@@ -165,6 +165,11 @@ export function tomorrowInArgentina(now: Date = new Date()): string {
   return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10)
 }
 
+/** "1 pedido", "3 pedidos". */
+export function ordersCountLabel(count: number): string {
+  return count === 1 ? '1 pedido' : `${count} pedidos`
+}
+
 export const orderStatusColors: Record<OrderStatus, 'warning' | 'success' | 'neutral'> = {
   pending: 'warning',
   delivered: 'success',

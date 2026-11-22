@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { sumMoney } from '@pollux/contracts'
+import { ordersCountLabel } from '~/utils/orders'
 import type { Order, OrderListItem } from '~/utils/orders'
 
 useSeoMeta({ title: 'Reparto' })
@@ -57,8 +58,6 @@ function onDelivered(delivered: Order) {
   if (!orders.value) return
   orders.value = { ...orders.value, items: orders.value.items.map(o => (o.id === delivered.id ? delivered : o)) }
 }
-
-const ordersLabel = (count: number) => (count === 1 ? '1 pedido' : `${count} pedidos`)
 </script>
 
 <template>
@@ -127,7 +126,7 @@ const ordersLabel = (count: number) => (count === 1 ? '1 pedido' : `${count} ped
                 {{ group.town }}
               </h2>
               <p class="text-sm text-muted tabular-nums">
-                {{ ordersLabel(group.orders.length) }} · <span class="font-medium text-highlighted">{{ formatMoney(group.total) }}</span>
+                {{ ordersCountLabel(group.orders.length) }} · <span class="font-medium text-highlighted">{{ formatMoney(group.total) }}</span>
               </p>
             </div>
           </template>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**pollux-core** is a proof of concept for a management app for small and medium businesses in Argentina (PyMEs). The DB schema is written and applied to Supabase, with Gio Pack demo data seeded. The dashboard has its foundation (sign-in, the typed API client, the business switcher, formatting, Playwright) and placeholder sections. The API is scaffolded (app factory, Supabase auth and business selection, `GET /me`, test harness); the business modules come next.
+**pollux-core** is a proof of concept for a management app for small and medium businesses in Argentina (PyMEs). The DB schema is written and applied to Supabase, with Gio Pack demo data seeded. The dashboard has its foundation (sign-in, the typed API client, the business switcher, formatting, Playwright) and the sections of spec #2 built on it (Inicio, Pedidos, Clientes, Cuentas corrientes, Productos, Compras, Proveedores); the remaining dashboard tickets refine them. The API is scaffolded (app factory, Supabase auth and business selection, `GET /me`, test harness); the business modules come next.
 
 The work is planned in two specs on GitHub: **#1 (API)** and **#2 (dashboard)**. Each is split into ticket sub-issues labelled `api` or `dashboard`, linked by native blocked-by relationships. The API is built first. See **Working on tickets** below.
 
