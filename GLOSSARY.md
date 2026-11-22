@@ -17,7 +17,7 @@ The town a Branch is in (its `city`). Orders are planned and delivered town by t
 _Avoid_: Ruta, zona, city (in UI)
 
 **Condición frente al IVA (VAT condition)**:
-A customer's tax status (Responsable Inscripto, Monotributo, Consumidor Final, Exento), kept for future invoicing.
+A customer's or the business's own tax status (Responsable Inscripto, Monotributo, Consumidor Final, Exento), kept for future invoicing and printed on the Delivery note.
 _Avoid_: Tax type, categoría fiscal
 
 ## Orders
@@ -61,6 +61,18 @@ _Avoid_: Anular entrega, edit delivered order
 **Remito (Delivery note)**:
 The non-fiscal paper that travels with an Order and lists what is handed over, with prices and the total. Each business numbers its Delivery notes in sequence, and a number is never reused, even if the Order is cancelled.
 _Avoid_: Remito (in code), packing slip, invoice
+
+**Datos del negocio (Business details)**:
+The business's own data printed on its Delivery notes as the issuer: razón social (legal name), CUIT, Condición frente al IVA, domicilio (address, Localidad, province, postal code), phone, Ingresos Brutos number and Inicio de actividades. All optional.
+_Avoid_: Emisor, company profile
+
+**Ingresos Brutos (Gross income number)**:
+The business's registration number for the provincial gross-income tax, printed on its documents as given (the format varies by province).
+_Avoid_: IIBB (in code), tax number
+
+**Inicio de actividades (Activity start date)**:
+The day the business registered its start of activities with ARCA, printed on its documents.
+_Avoid_: Fecha de alta, start date
 
 ## Balance
 

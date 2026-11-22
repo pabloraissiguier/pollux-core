@@ -1,6 +1,6 @@
 import { authUsers } from 'drizzle-orm/supabase'
-import { index, integer, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
-import { app, businessId, createdAt, id, updatedAt } from './_shared'
+import { date, index, integer, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { app, businessId, createdAt, id, updatedAt, vatCondition } from './_shared'
 
 /**
  * The app's user profile, 1:1 with `auth.users`.
@@ -13,11 +13,27 @@ export const profiles = pgTable('profiles', {
   updatedAt: updatedAt(),
 }).enableRLS()
 
-/** The tenant. Every business table carries a `business_id` pointing here. */
+/**
+ * The tenant. Every business table carries a `business_id` pointing here.
+ * Besides `name`, its own data is what the Delivery note prints as the issuer: legal name, CUIT,
+ * VAT condition, address, phone, Ingresos Brutos number and start of activities. All optional,
+ * so a business can start without them.
+ */
 export const businesses = app.table('businesses', {
   id: id(),
   name: text('name').notNull(),
+  legalName: text('legal_name'),
   cuit: text('cuit'),
+  vatCondition: vatCondition('vat_condition'),
+  address: text('address'),
+  city: text('city'),
+  province: text('province'),
+  postalCode: text('postal_code'),
+  phone: text('phone'),
+  /** Número de Ingresos Brutos, as printed (format varies by province). */
+  grossIncomeNumber: text('gross_income_number'),
+  /** Inicio de actividades, a calendar day. */
+  activityStartDate: date('activity_start_date'),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }).enableRLS()

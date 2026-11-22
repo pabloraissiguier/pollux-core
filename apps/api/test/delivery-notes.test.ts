@@ -87,7 +87,19 @@ describe('issuing a Delivery note', () => {
     expect(note).toEqual({
       number: expect.any(Number),
       issuedAt: expect.any(String),
-      business: { name: 'Distribuidora Remitos', cuit: null },
+      business: {
+        name: 'Distribuidora Remitos',
+        legalName: null,
+        cuit: null,
+        vatCondition: null,
+        address: null,
+        city: null,
+        province: null,
+        postalCode: null,
+        phone: null,
+        grossIncomeNumber: null,
+        activityStartDate: null,
+      },
       customer: {
         id: customer.id,
         name: 'Almacén La Esquina',
@@ -123,6 +135,53 @@ describe('issuing a Delivery note', () => {
 
     const detail = await (await api(`/orders/${order.id}`)).json()
     expect(detail.deliveryNoteNumber).toBe(note.number)
+  })
+})
+
+describe('the business on the Delivery note', () => {
+  it('carries the business\'s legal name, address, phone, VAT condition, gross-income number and start of activities', async () => {
+    const seller = await t.createOwnedBusiness('Gio Pack Prueba', {
+      legalName: 'Gio Pack SRL',
+      cuit: '30-71234567-1',
+      vatCondition: 'responsable_inscripto',
+      address: 'Av. Italia 1234',
+      city: 'Corral de Bustos',
+      province: 'Córdoba',
+      postalCode: '2645',
+      phone: '3468 400000',
+      grossIncomeNumber: '280-123456-7',
+      activityStartDate: '2015-03-01',
+    })
+    const as = { as: seller.userId }
+    const customer = await (await t.request('/customers', { ...as, method: 'POST', body: JSON.stringify({ name: 'Kiosco', branches: [{ address: 'Mitre 1', city: 'Isla Verde' }] }) })).json()
+    const product = await (await t.request('/products', { ...as, method: 'POST', body: JSON.stringify({ code: 'GP-1', name: 'Bolsa', price: '10.00' }) })).json()
+    const order = await (await t.request('/orders', { ...as, method: 'POST', body: JSON.stringify({ customerId: customer.id, branchId: customer.branches[0].id, deliveryDate: '2026-11-24', lines: [{ productId: product.id, quantity: 1 }] }) })).json()
+
+    const res = await t.request(`/orders/${order.id}/delivery-note`, { ...as, method: 'POST' })
+
+    expect(res.status).toBe(200)
+    expect((await res.json()).business).toEqual({
+      name: 'Gio Pack Prueba',
+      legalName: 'Gio Pack SRL',
+      cuit: '30-71234567-1',
+      vatCondition: 'responsable_inscripto',
+      address: 'Av. Italia 1234',
+      city: 'Corral de Bustos',
+      province: 'Córdoba',
+      postalCode: '2645',
+      phone: '3468 400000',
+      grossIncomeNumber: '280-123456-7',
+      activityStartDate: '2015-03-01',
+    })
+  })
+
+  it('shows only the business that issues it, not another business\'s data', async () => {
+    const order = await pendingOrder()
+    await t.createOwnedBusiness('Distribuidora Vecina', { legalName: 'Vecina SA', address: 'Otra calle 9', phone: '111' })
+
+    const note = await issued(order.id)
+
+    expect(note.business).toMatchObject({ name: 'Distribuidora Remitos', legalName: null, address: null, phone: null })
   })
 })
 

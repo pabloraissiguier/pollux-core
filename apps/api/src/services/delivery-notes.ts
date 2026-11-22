@@ -44,7 +44,19 @@ async function getDeliveryNote(tx: Transaction, businessId: string, orderId: str
     .select({
       number: orders.deliveryNoteNumber,
       issuedAt: orders.deliveryNoteIssuedAt,
-      business: { name: businesses.name, cuit: businesses.cuit },
+      business: {
+        name: businesses.name,
+        legalName: businesses.legalName,
+        cuit: businesses.cuit,
+        vatCondition: businesses.vatCondition,
+        address: businesses.address,
+        city: businesses.city,
+        province: businesses.province,
+        postalCode: businesses.postalCode,
+        phone: businesses.phone,
+        grossIncomeNumber: businesses.grossIncomeNumber,
+        activityStartDate: businesses.activityStartDate,
+      },
       customer: {
         id: customers.id,
         name: customers.name,
