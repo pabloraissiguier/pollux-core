@@ -1,11 +1,5 @@
-const cordobaDay = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Argentina/Cordoba',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-})
-
-/** Today as `yyyy-mm-dd` in America/Argentina/Cordoba: the default Delivered date and Payment date. */
-export function today(now = new Date()): string {
-  return cordobaDay.format(now)
-}
+/**
+ * Today as `yyyy-mm-dd` in America/Argentina/Cordoba: the default Delivered date and Payment date.
+ * The same function bounds them in `pastDaySchema`, so a default can never be refused as future.
+ */
+export { todayInCordoba as today } from '@pollux/contracts'

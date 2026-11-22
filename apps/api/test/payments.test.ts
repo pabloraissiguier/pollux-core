@@ -144,6 +144,20 @@ describe('recording a Payment', () => {
     expect(await balanceOf(customer.id)).toBe('0.00')
   })
 
+  it('refuses a Payment date later than today in Córdoba', async () => {
+    const customer = await createCustomer()
+    const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Cordoba' })
+      .format(new Date(Date.now() + 24 * 60 * 60 * 1000))
+
+    const res = await post('/payments', { customerId: customer.id, amount: '10', method: 'cash', paidOn: tomorrow })
+
+    expect(res.status).toBe(400)
+    const { error } = await res.json()
+    expect(error.code).toBe('validation_error')
+    expect(error.details.paidOn).toEqual(['La fecha de pago no puede ser futura'])
+    expect(await balanceOf(customer.id)).toBe('0.00')
+  })
+
   it('refuses a Customer or Order that is not in the business', async () => {
     const customer = await createCustomer()
     const missing = '00000000-0000-4000-8000-000000000000'
@@ -308,7 +322,7 @@ describe('Payments in the Order and the Customer\'s history', () => {
       orderId: order.id,
       amount: '700',
       method: 'check',
-      paidOn: '2026-11-25',
+      paidOn: '2026-11-21',
       reference: 'Cheque 123',
     })).json()
     await post('/payments', { customerId: customer.id, orderId: other.id, amount: '50', method: 'cash' })
@@ -317,7 +331,7 @@ describe('Payments in the Order and the Customer\'s history', () => {
     const detail = await (await api(`/orders/${order.id}`)).json()
 
     expect(detail.payments).toMatchObject([
-      { id: later.id, amount: '700.00', method: 'check', paidOn: '2026-11-25', reference: 'Cheque 123' },
+      { id: later.id, amount: '700.00', method: 'check', paidOn: '2026-11-21', reference: 'Cheque 123' },
       { amount: '300.00', method: 'cash', paidOn: '2026-11-20' },
     ])
     expect(detail.payments).toHaveLength(2)
