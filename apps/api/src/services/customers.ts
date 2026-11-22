@@ -10,6 +10,7 @@ import { and, asc, count, eq, exists, ilike, inArray, or, sql } from 'drizzle-or
 import type { z } from 'zod'
 import type { Database, DbOrTx } from '../db'
 import { ApiError } from '../errors'
+import { likeContains } from '../like'
 
 // Validated request bodies, after the shared schemas' transforms (e.g. CUIT formatted, '' → null).
 type ValidCustomerCreate = z.output<typeof customerCreateSchema>
@@ -160,11 +161,6 @@ export async function listTowns(db: DbOrTx, businessId: string) {
     }
   }
   return { items: [...byTown.values()].map(t => t.city).sort(spanish.compare) }
-}
-
-/** Escapes `%`, `_` and `\` so user text matches literally inside a LIKE pattern. */
-function likeContains(text: string) {
-  return `%${text.replace(/[\\%_]/g, c => `\\${c}`)}%`
 }
 
 /**

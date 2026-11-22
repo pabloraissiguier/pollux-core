@@ -46,6 +46,8 @@ export const purchaseLines = app.table('purchase_lines', {
   productId: uuid('product_id').notNull(),
   quantity: integer('quantity').notNull(),
   unitCost: money('unit_cost').notNull(),
+  /** Keeps the lines in the order they were entered (as on the Supplier's invoice). */
+  position: integer('position').notNull().default(0),
   createdAt: createdAt(),
 }, t => [
   index('purchase_lines_purchase_idx').on(t.businessId, t.purchaseId),
