@@ -72,6 +72,10 @@ _Avoid_: Cuenta corriente (in code), account, debt
 One debit or credit on a customer's Balance, caused by a Delivered Order, an undone delivery, a Payment, a voided Payment, an Opening balance or a Balance adjustment.
 _Avoid_: Movimiento (on its own), ledger entry, transaction
 
+**Resumen de cuenta (Statement)**:
+A customer's Balance entries in date order, each with the Balance right after it, optionally for a date range. It is how the owner explains to a customer what they owe.
+_Avoid_: Extracto, ledger, account history
+
 **Saldo inicial (Opening balance)**:
 The Balance a customer carried over from before the app (e.g. from the Excel sheet), entered once with its date.
 _Avoid_: Saldo anterior, deuda previa

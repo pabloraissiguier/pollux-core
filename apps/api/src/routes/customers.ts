@@ -3,12 +3,14 @@ import {
   branchUpdateSchema,
   customerCreateSchema,
   customerListQuerySchema,
+  customerStatementQuerySchema,
   customerUpdateSchema,
 } from '@pollux/contracts'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { requireBusiness } from '../auth/session'
 import type { AppEnv } from '../context'
+import { getCustomerBalance, getCustomerStatement } from '../services/balance'
 import {
   addBranch,
   createCustomer,
@@ -55,4 +57,11 @@ export const customerRoutes = new Hono<AppEnv>()
     const { id, branchId } = c.req.valid('param')
     const customer = await updateBranch(c.var.db, c.var.businessId, id, branchId, c.req.valid('json'))
     return c.json(customer, 200)
+  })
+  .get('/:id/balance', validate('param', customerParam), async (c) => {
+    return c.json(await getCustomerBalance(c.var.db, c.var.businessId, c.req.valid('param').id), 200)
+  })
+  .get('/:id/statement', validate('param', customerParam), validate('query', customerStatementQuerySchema), async (c) => {
+    const { db, businessId } = c.var
+    return c.json(await getCustomerStatement(db, businessId, c.req.valid('param').id, c.req.valid('query')), 200)
   })

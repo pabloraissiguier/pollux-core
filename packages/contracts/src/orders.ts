@@ -20,7 +20,8 @@ export const discountPercentSchema = percentSchema.refine(
 )
 
 /** A calendar day, `yyyy-mm-dd`. */
-const day = z.iso.date({ message: 'Ingresá una fecha válida (aaaa-mm-dd)' })
+export const daySchema = z.iso.date({ message: 'Ingresá una fecha válida (aaaa-mm-dd)' })
+const day = daySchema
 
 /**
  * Línea de pedido. Its unit price is not sent: the API freezes the Product's current Price when
@@ -87,6 +88,15 @@ export const orderListQuerySchema = paginationSchema.extend({
   customerId: z.uuid({ message: 'Elegí un cliente válido' }).optional(),
 })
 export type OrderListQuery = z.input<typeof orderListQuerySchema>
+
+/**
+ * Mark a Pending Order Delivered. `deliveredOn` (the Delivered date) defaults to today in
+ * America/Argentina/Cordoba.
+ */
+export const orderDeliverSchema = z.object({
+  deliveredOn: day.optional(),
+})
+export type OrderDeliverInput = z.input<typeof orderDeliverSchema>
 
 /** `quantity × unitPrice × (1 − discountPercent / 100)`, rounded half-up to cents. */
 export function lineSubtotal(line: { quantity: number, unitPrice: Money, discountPercent: Percent }): Money {
