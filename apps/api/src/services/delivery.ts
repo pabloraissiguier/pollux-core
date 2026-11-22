@@ -7,6 +7,7 @@ import { today } from '../dates'
 import type { Database, Transaction } from '../db'
 import { ApiError } from '../errors'
 import { getOrder, isOrder, lockOrder } from './orders'
+import { insertPayment } from './payments'
 import { lockProducts, recordStockMovements } from './stock'
 
 type ValidOrderDeliver = z.output<typeof orderDeliverSchema>
@@ -44,7 +45,8 @@ async function moveOrderStock(
  * Entregar: marks a Pending Order Delivered, all or nothing. In one transaction it locks the
  * Order and then its Products, takes each line's quantity out of On-hand stock, debits the
  * Customer for the Order total (an `order_delivered` Balance entry dated by the Delivered date,
- * docs/adr/0001) and sets the status. Answers with the Order.
+ * docs/adr/0001), records the optional Payment collected with it (noting the Order, dated by the
+ * Delivered date; any amount) and sets the status. Answers with the Order.
  */
 export async function deliverOrder(
   db: Database,
@@ -70,6 +72,17 @@ export async function deliverOrder(
         entryDate: deliveredOn,
         orderId,
         createdBy: profileId,
+      })
+    }
+    // Money collected at the door: recorded after the debit, noting the Order, on the same day.
+    if (input.payment) {
+      await insertPayment(tx, businessId, profileId, {
+        customerId: order.customer.id,
+        orderId,
+        amount: input.payment.amount,
+        method: input.payment.method,
+        reference: input.payment.reference ?? null,
+        paidOn: deliveredOn,
       })
     }
     await tx

@@ -1,8 +1,10 @@
 import { z } from 'zod'
+import { daySchema } from './day'
 import { ORDER_STATUSES } from './enums'
 import { applyDiscount, multiplyMoney, percentOf, percentSchema, subtractMoney, sumMoney } from './money'
 import type { Money, Percent } from './money'
 import { paginationSchema } from './pagination'
+import { deliveryPaymentSchema } from './payments'
 
 /** Free notes: trimmed, and an empty string means "none" (stored as null). */
 const notes = z
@@ -19,8 +21,8 @@ export const discountPercentSchema = percentSchema.refine(
   { message: 'Ingresá un descuento entre 0 y 100' },
 )
 
-/** A calendar day, `yyyy-mm-dd`. */
-export const daySchema = z.iso.date({ message: 'Ingresá una fecha válida (aaaa-mm-dd)' })
+// `daySchema` lives in ./day so ./payments can use it without importing this module.
+export { daySchema }
 const day = daySchema
 
 /**
@@ -91,10 +93,13 @@ export type OrderListQuery = z.input<typeof orderListQuerySchema>
 
 /**
  * Mark a Pending Order Delivered. `deliveredOn` (the Delivered date) defaults to today in
- * America/Argentina/Cordoba.
+ * America/Argentina/Cordoba. `payment`, when sent, is the money collected at the door, recorded
+ * in the same step, noting the Order and dated by the Delivered date; it may be less than, equal
+ * to or more than the total. Without it the Order is left "on account".
  */
 export const orderDeliverSchema = z.object({
   deliveredOn: day.optional(),
+  payment: deliveryPaymentSchema.optional(),
 })
 export type OrderDeliverInput = z.input<typeof orderDeliverSchema>
 
