@@ -1,6 +1,6 @@
 import { PAYMENT_METHODS } from '@pollux/contracts'
 import { sql } from 'drizzle-orm'
-import { check, date, foreignKey, index, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
+import { check, date, foreignKey, index, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { app, businessId, createdAt, id, money } from './_shared'
 import { customers } from './customers'
 import { orders } from './orders'
@@ -77,6 +77,10 @@ export const balanceEntries = app.table('balance_entries', {
   index('balance_entries_customer_idx').on(t.businessId, t.customerId, t.entryDate),
   index('balance_entries_order_idx').on(t.businessId, t.orderId),
   index('balance_entries_payment_idx').on(t.businessId, t.paymentId),
+  // Saldo inicial: at most one per Customer, so carried-over debt is never counted twice.
+  uniqueIndex('balance_entries_opening_balance_key')
+    .on(t.businessId, t.customerId)
+    .where(sql`${t.type} = 'opening_balance'`),
   foreignKey({
     name: 'balance_entries_customer_fk',
     columns: [t.businessId, t.customerId],

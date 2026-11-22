@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "balance_entries_opening_balance_key" ON "app"."balance_entries" USING btree ("business_id","customer_id") WHERE "app"."balance_entries"."type" = 'opening_balance';

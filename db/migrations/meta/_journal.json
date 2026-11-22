@@ -15,6 +15,13 @@
       "when": 1795355229833,
       "tag": "0001_purchase_line_position",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795356098105,
+      "tag": "0002_opening_balance_once",
+      "breakpoints": true
     }
   ]
 }
