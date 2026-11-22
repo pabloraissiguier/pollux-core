@@ -5,6 +5,8 @@ import type { ApiClient } from '~/composables/useApi'
 /** A Customer as the API returns it, with all its Branches (oldest first). */
 export type Customer = InferResponseType<ApiClient['customers'][':id']['$get'], 200>
 export type Branch = Customer['branches'][number]
+/** What picking a Customer needs (for an Order, as a filter): a list item and the detail both fit. */
+export type CustomerOption = Pick<Customer, 'id' | 'name' | 'branches'>
 
 /** The fields of the Customer form, as typed (the shared schema trims and turns '' into null). */
 export interface CustomerFormState {
@@ -47,6 +49,11 @@ export function branchFormState(branch?: Branch): BranchFormState {
 /** The towns of a Customer's Branches, each once, in Branch order. */
 export function customerTowns(customer: Pick<Customer, 'branches'>): string[] {
   return [...new Set(customer.branches.map(b => b.city))]
+}
+
+/** A Branch in one line: its name, if any, then its address and town. */
+export function branchLabel(branch: Pick<Branch, 'name' | 'address' | 'city'>): string {
+  return [branch.name, `${branch.address}, ${branch.city}`].filter(Boolean).join(' · ')
 }
 
 /** A `tel:` link for a phone as people type it ("03468 15-123456"): digits and a leading +. */

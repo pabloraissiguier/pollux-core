@@ -1,0 +1,1 @@
+ALTER TABLE "app"."purchase_lines" ADD COLUMN "position" integer DEFAULT 0 NOT NULL;
