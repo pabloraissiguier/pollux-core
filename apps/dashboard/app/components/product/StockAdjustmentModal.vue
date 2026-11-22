@@ -2,7 +2,7 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import type { Product } from '~/utils/products'
-import { stockAdjustmentFormSchema, stockAdjustmentFormState, stockAdjustmentReasonItems, unitsInputSchema } from '~/utils/stock'
+import { signedUnits, stockAdjustmentFormSchema, stockAdjustmentFormState, stockAdjustmentReasonItems, unitsInputSchema, type AdjustmentDirection } from '~/utils/stock'
 
 /** Ajuste de stock: changes one Product's On-hand stock with a reason. Emits the Product. */
 const props = defineProps<{ product: Product }>()
@@ -15,7 +15,7 @@ const form = useTemplateRef('form')
 const state = reactive(stockAdjustmentFormState())
 const saving = ref(false)
 
-const directionItems = [
+const directionItems: { value: AdjustmentDirection, label: string, description: string }[] = [
   { value: 'add', label: 'Sumar', description: 'Entran unidades' },
   { value: 'remove', label: 'Restar', description: 'Salen unidades' }
 ]
@@ -33,8 +33,7 @@ watch(() => state.reason, (reason) => {
 const resultingOnHand = computed(() => {
   const quantity = unitsInputSchema.safeParse(state.quantity)
   if (!quantity.success || quantity.data === 0) return null
-  const onHand = props.product.stock.onHand
-  return state.direction === 'add' ? onHand + quantity.data : onHand - quantity.data
+  return props.product.stock.onHand + signedUnits(state.direction, quantity.data)
 })
 
 async function onSubmit({ data }: FormSubmitEvent<z.output<typeof stockAdjustmentFormSchema>>) {
@@ -44,7 +43,7 @@ async function onSubmit({ data }: FormSubmitEvent<z.output<typeof stockAdjustmen
       c => c.stock.adjustments.$post({
         json: {
           productId: props.product.id,
-          quantity: data.direction === 'add' ? data.quantity : -data.quantity,
+          quantity: signedUnits(data.direction, data.quantity),
           reason: data.reason,
           notes: data.notes
         }

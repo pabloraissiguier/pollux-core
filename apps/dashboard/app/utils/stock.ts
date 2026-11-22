@@ -10,26 +10,37 @@ export type StockMovement = InferResponseType<ApiClient['stock']['movements']['$
  * A count of units as typed on a phone's numeric keypad: digits only, with optional `.` for
  * thousands (`"1.200"`). The keypad has no minus sign, so a direction is chosen apart.
  */
+const NOT_WHOLE_UNITS = 'Ingresá un número entero, sin signo ni decimales'
+
 export const unitsInputSchema = z
   .string()
   .trim()
   .min(1, 'Ingresá una cantidad')
   .transform(v => v.replace(/\./g, ''))
-  .pipe(z.string().regex(/^\d+$/, 'Ingresá un número entero, sin signo ni decimales'))
+  .pipe(z.string().regex(/^\d+$/, NOT_WHOLE_UNITS))
   .transform(Number)
 
 /** Whether a Stock adjustment adds units to On-hand stock or takes them out. */
-export type AdjustmentDirection = 'add' | 'remove'
+export const adjustmentDirectionSchema = z.enum(['add', 'remove'])
+export type AdjustmentDirection = z.infer<typeof adjustmentDirectionSchema>
+
+/** The signed quantity the API takes: units taken out are negative. */
+export function signedUnits(direction: AdjustmentDirection, quantity: number): number {
+  return direction === 'add' ? quantity : -quantity
+}
 
 /**
  * The "Ajustar stock" form: a direction plus a positive quantity, which together make the
  * signed quantity the API takes. Reason and notes are the shared schema's own.
  */
 export const stockAdjustmentFormSchema = z.object({
-  direction: z.enum(['add', 'remove']),
+  direction: adjustmentDirectionSchema,
   quantity: unitsInputSchema.pipe(z.number().min(1, 'La cantidad debe ser mayor que cero')),
   reason: stockAdjustmentSchema.shape.reason,
   notes: stockAdjustmentSchema.shape.notes
+}).refine(form => !(form.reason === 'breakage' && form.direction === 'add'), {
+  path: ['direction'],
+  message: 'Una rotura solo resta unidades'
 })
 
 export interface StockAdjustmentFormState {
@@ -56,7 +67,7 @@ export const initialCountFormSchema = z
   .object({
     counts: z.record(z.string(), z.string().refine(
       v => v.trim() === '' || unitsInputSchema.safeParse(v).success,
-      'Ingresá un número entero, sin signo ni decimales'
+      NOT_WHOLE_UNITS
     ))
   })
   .transform(({ counts }) => Object.entries(counts)
@@ -72,7 +83,7 @@ export function typedCountTotal(counts: Record<string, string>): number {
 export function movementCause(movement: StockMovement): string {
   const type = stockMovementTypeLabels[movement.type]
   if (movement.type === 'adjustment' && movement.reason) return `${type} · ${stockAdjustmentReasonLabels[movement.reason]}`
-  if (movement.order) return `${type} N° ${movement.order.number}`
+  if (movement.order) return `${type} N° ${formatUnits(movement.order.number)}`
   if (movement.purchase?.invoiceNumber) return `${type} · Factura ${movement.purchase.invoiceNumber}`
   return type
 }

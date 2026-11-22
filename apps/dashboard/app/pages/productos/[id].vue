@@ -256,7 +256,7 @@ function changeSummary(change: { oldPrice: string | null, newPrice: string }) {
               :loading="movementsStatus === 'pending'"
               block
               class="mt-2"
-              @click="movementsLimit = Math.min(movementsLimit + MOVEMENTS_STEP * 2, MOVEMENTS_MAX)"
+              @click="movementsLimit = Math.min(movementsLimit + MOVEMENTS_STEP, MOVEMENTS_MAX)"
             />
           </section>
         </UCard>

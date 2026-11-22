@@ -65,7 +65,7 @@ async function onSubmit({ data: items }: FormSubmitEvent<z.output<typeof initial
     const changed = result.items.filter(item => item.difference !== 0).length
     toast.add({
       title: 'Conteo guardado',
-      description: `${result.items.length} ${result.items.length === 1 ? 'producto contado' : 'productos contados'}, ${changed} con diferencia.`,
+      description: `${formatUnits(result.items.length)} ${result.items.length === 1 ? 'producto contado' : 'productos contados'}, ${formatUnits(changed)} con diferencia.`,
       color: 'success',
       icon: 'i-lucide-check'
     })
@@ -209,7 +209,7 @@ async function onError(event: FormErrorEvent) {
         <UButton
           type="submit"
           form="conteo-inicial-form"
-          :label="typed ? `Guardar conteo (${typed})` : 'Guardar conteo'"
+          :label="typed ? `Guardar conteo (${formatUnits(typed)})` : 'Guardar conteo'"
           icon="i-lucide-check"
           :loading="saving"
           :disabled="!typed"
