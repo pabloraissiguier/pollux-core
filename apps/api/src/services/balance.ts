@@ -30,15 +30,19 @@ async function findCustomer(db: DbOrTx, businessId: string, customerId: string) 
 
 /**
  * Saldo: what the Customer owes, always summed from their Balance entries (positive: they owe;
- * negative: they have credit).
+ * negative: they have credit), plus `hasOpeningBalance`, whether their one Opening balance is
+ * already entered. Both come from the same pass over the Customer's entries.
  */
 export async function getCustomerBalance(db: DbOrTx, businessId: string, customerId: string) {
   const customer = await findCustomer(db, businessId, customerId)
   const [row] = await db
-    .select({ balance: sql<string>`coalesce(sum(${balanceEntries.amount}), 0.00)` })
+    .select({
+      balance: sql<string>`coalesce(sum(${balanceEntries.amount}), 0.00)`,
+      hasOpeningBalance: sql<boolean>`coalesce(bool_or(${balanceEntries.type} = 'opening_balance'), false)`,
+    })
     .from(balanceEntries)
     .where(and(eq(balanceEntries.businessId, businessId), eq(balanceEntries.customerId, customerId)))
-  return { customer, balance: row!.balance }
+  return { customer, balance: row!.balance, hasOpeningBalance: row!.hasOpeningBalance }
 }
 
 /**

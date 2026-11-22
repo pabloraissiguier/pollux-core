@@ -82,7 +82,7 @@ describe('delivering an Order', () => {
 
     const balance = await api(`/customers/${customer.id}/balance`)
     expect(balance.status).toBe(200)
-    expect(await balance.json()).toEqual({ customer: { id: customer.id, name: 'Almacén La Esquina' }, balance: '3059.95' })
+    expect(await balance.json()).toEqual({ customer: { id: customer.id, name: 'Almacén La Esquina' }, balance: '3059.95', hasOpeningBalance: false })
   })
 
   it('records the stock leaving as order_delivered Stock movements that name the Order', async () => {

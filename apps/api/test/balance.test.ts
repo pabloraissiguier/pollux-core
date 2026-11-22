@@ -51,6 +51,22 @@ describe('Opening balance', () => {
     ])
   })
 
+  it('shows on the Balance whether the Customer already has one', async () => {
+    const customer = await createCustomer('Kiosco sin saldo inicial')
+    expect((await post(`/customers/${customer.id}/balance-adjustments`, { amount: '500.00', reason: 'Corrección' })).status).toBe(201)
+
+    const before = await api(`/customers/${customer.id}/balance`)
+    expect(before.status).toBe(200)
+    expect(await before.json()).toEqual({ customer: { id: customer.id, name: 'Kiosco sin saldo inicial' }, balance: '500.00', hasOpeningBalance: false })
+
+    const added = await post(`/customers/${customer.id}/opening-balance`, { amount: '1000.00', entryDate: '2026-10-31' })
+    expect(added.status).toBe(201)
+    expect(await added.json()).toMatchObject({ balance: '1500.00', hasOpeningBalance: true })
+
+    const after = await api(`/customers/${customer.id}/balance`)
+    expect(await after.json()).toEqual({ customer: { id: customer.id, name: 'Kiosco sin saldo inicial' }, balance: '1500.00', hasOpeningBalance: true })
+  })
+
   it('may be negative, when the Customer carried over a credit', async () => {
     const customer = await createCustomer('Almacén con saldo a favor')
 
