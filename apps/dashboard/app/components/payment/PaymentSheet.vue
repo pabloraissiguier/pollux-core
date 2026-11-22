@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { PAYMENT_METHODS } from '@pollux/contracts'
-import type { FormSubmitEvent } from '@nuxt/ui'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { statementPaymentLabels } from '~/utils/balance'
+import type { CustomerOption } from '~/utils/customers'
 import type { Order } from '~/utils/orders'
 import { paymentFormSchema } from '~/utils/payments'
 import type { Payment, PaymentChoice, PaymentFormOutput } from '~/utils/payments'
@@ -10,8 +11,9 @@ import type { Payment, PaymentChoice, PaymentFormOutput } from '~/utils/payments
  * The bottom sheet where money changes hands. With an `order` it is Entregar: it marks the
  * Pending Order Delivered in one step, with "Cuenta corriente (sin pago)" pre-selected or a
  * Payment method whose amount starts at the total. Without one it is Registrar pago for
- * `customer`: a Payment method, the amount, the Payment date. Either way it ends showing the
- * Customer's new Balance, and emits the delivered Order or the recorded Payment.
+ * `customer`: a Payment method, the amount, the Payment date. Given neither (from Inicio), it
+ * asks which Customer pays first. Either way it ends showing the Customer's new Balance, and
+ * emits the delivered Order or the recorded Payment.
  */
 const props = defineProps<{
   order?: Pick<Order, 'id' | 'number' | 'customer' | 'totals'>
@@ -24,11 +26,14 @@ const { request } = useApi()
 
 const isDelivery = computed(() => !!props.order)
 const schema = computed(() => paymentFormSchema(isDelivery.value))
-const customer = computed(() => {
-  const found = props.order?.customer ?? props.customer
-  if (!found) throw new Error('PaymentSheet needs an order or a customer')
-  return found
-})
+/** Without an Order or a Customer, the sheet starts by asking who pays. */
+const picking = computed(() => !props.order && !props.customer)
+const pickedCustomer = ref<CustomerOption>()
+const customer = computed(() => props.order?.customer ?? props.customer ?? pickedCustomer.value)
+
+function validateCustomer(): FormError[] {
+  return picking.value && !pickedCustomer.value ? [{ name: 'customer', message: 'Elegí un cliente' }] : []
+}
 
 const methodItems = PAYMENT_METHODS.map(value => ({ value, label: paymentMethodLabels[value] }))
 const items = computed<{ value: PaymentChoice, label: string, description?: string }[]>(() => isDelivery.value
@@ -56,13 +61,15 @@ watch(open, (isOpen) => {
     reference: '',
     day: todayInArgentina()
   })
+  pickedCustomer.value = undefined
   done.value = null
   newBalance.value = null
 })
 
 async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
   // A second tap while the first is in flight would deliver or pay twice.
-  if (sending.value) return
+  if (sending.value || !customer.value) return
+  const payer = customer.value
   sending.value = true
   try {
     // Validation errors come back as a toast: the API names the fields its own way (`payment.amount`).
@@ -75,13 +82,13 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
     } else {
       const payment = data.payment!
       emit('recorded', await request(c => c.payments.$post({
-        json: { customerId: customer.value.id, paidOn: data.day, ...payment }
+        json: { customerId: payer.id, paidOn: data.day, ...payment }
       })))
     }
     done.value = { payment: data.payment }
     // It already happened: a failed Balance read only leaves the figure out.
     try {
-      const { balance } = await request(c => c.customers[':id'].balance.$get({ param: { id: customer.value.id } }))
+      const { balance } = await request(c => c.customers[':id'].balance.$get({ param: { id: payer.id } }))
       newBalance.value = balance
     } catch (error) {
       if (!(error instanceof ApiRequestError)) throw error
@@ -98,7 +105,7 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
   <UDrawer
     v-model:open="open"
     :title="order ? `Entregar pedido N° ${order.number}` : 'Registrar pago'"
-    :description="customer.name"
+    :description="picking ? undefined : customer?.name"
   >
     <template #body>
       <div class="mx-auto flex w-full max-w-lg flex-col gap-4">
@@ -113,7 +120,7 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
           <CustomerBalanceFigure
             v-if="newBalance !== null"
             :balance="newBalance"
-            :label="`Saldo de ${customer.name}`"
+            :label="`Saldo de ${customer?.name}`"
             class="py-2"
           />
           <UButton
@@ -127,6 +134,7 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
           v-else
           :schema="schema"
           :state="state"
+          :validate="validateCustomer"
           :validate-on="['input']"
           class="flex flex-col gap-4"
           @submit="onSubmit"
@@ -138,6 +146,18 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
             <span class="text-muted">Total</span>
             <span class="text-2xl font-semibold text-highlighted tabular-nums">{{ formatMoney(order.totals.total) }}</span>
           </p>
+
+          <UFormField
+            v-if="picking"
+            name="customer"
+            label="Cliente"
+            required
+          >
+            <CustomerSearchMenu
+              v-model="pickedCustomer"
+              class="w-full"
+            />
+          </UFormField>
 
           <UFormField
             name="choice"
