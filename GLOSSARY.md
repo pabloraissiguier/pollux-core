@@ -89,7 +89,7 @@ Money a customer hands over, recorded with its payment method. It lowers the cus
 _Avoid_: Cobro, cobranza, receipt
 
 **Anular pago (Void payment)**:
-Cancelling a mistaken Payment: it stays on record marked void and a new Balance entry reverses it. Nothing is deleted.
+Cancelling a mistaken Payment, with a required reason: it stays on record marked void and a new Balance entry reverses it, dated like the Payment so the two cancel out in any Statement. Nothing is deleted.
 _Avoid_: Borrar pago, delete payment
 
 **Medio de pago (Payment method)**:

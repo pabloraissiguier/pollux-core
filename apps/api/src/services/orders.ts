@@ -6,6 +6,7 @@ import type { z } from 'zod'
 import type { Database, DbOrTx, Transaction } from '../db'
 import { ApiError } from '../errors'
 import { assertCustomer } from './customers'
+import { orderPayments } from './payments'
 import { reservedStock } from './products'
 import { nextNumber } from './sequences'
 import { lockProducts } from './stock'
@@ -117,11 +118,18 @@ function toOrder(row: OrderRow, lineRows: LineRow[]) {
   }
 }
 
-/** One Order with its lines and totals, or 404 when it isn't in this business. */
+/**
+ * One Order with its lines, totals and the Payments noted against it (newest first, voided ones
+ * included), or 404 when it isn't in this business.
+ */
 export async function getOrder(db: DbOrTx, businessId: string, orderId: string) {
   const [row] = await selectOrders(db, businessId).where(isOrder(businessId, orderId))
   if (!row) throw orderNotFound()
-  return toOrder(row, await selectLines(db, businessId, [orderId]))
+  const [lineRows, payments] = await Promise.all([
+    selectLines(db, businessId, [orderId]),
+    orderPayments(db, businessId, orderId),
+  ])
+  return { ...toOrder(row, lineRows), payments }
 }
 
 /**
@@ -233,6 +241,15 @@ export async function lockOrder(tx: Transaction, businessId: string, orderId: st
     .for('update')
   if (!order) throw orderNotFound()
   return order
+}
+
+/** Throws `order_not_found` unless the Order is in this business, and `order_not_of_customer` unless it's the Customer's. */
+export async function assertOrderOfCustomer(db: DbOrTx, businessId: string, customerId: string, orderId: string) {
+  const [order] = await db.select({ customerId: orders.customerId }).from(orders).where(isOrder(businessId, orderId))
+  if (!order) throw orderNotFound()
+  if (order.customerId !== customerId) {
+    throw new ApiError(400, 'order_not_of_customer', 'El pedido no es de este cliente')
+  }
 }
 
 /** Locks the Order row and refuses anything but a Pending Order. */
