@@ -219,6 +219,17 @@ async function undoDelivery() {
           </template>
         </UCard>
 
+        <!-- A Cancelled Order only reprints the Delivery note it already had; it never gets a new one. -->
+        <UButton
+          v-if="order.status !== 'cancelled' || order.deliveryNoteNumber"
+          :to="`/pedidos/${order.id}/remito`"
+          :label="order.deliveryNoteNumber ? 'Reimprimir remito' : 'Imprimir remito'"
+          icon="i-lucide-printer"
+          color="neutral"
+          variant="outline"
+          class="self-start"
+        />
+
         <UCard
           v-if="order.payments.length"
           as="section"
