@@ -39,7 +39,7 @@ The day an Order is planned to be delivered.
 _Avoid_: Fecha prometida
 
 **Fecha entregada (Delivered date)**:
-The day an Order was actually delivered. It dates the charge to the customer and appears on the Delivery note.
+The day an Order was actually delivered. It dates the charge to the customer and appears on the Delivery note. It is never later than today (in Córdoba).
 
 **Pendiente (Pending)**:
 The state of an Order that has been taken but not yet delivered. Its products count as Reserved stock, and its lines can still be edited.
@@ -85,7 +85,7 @@ A manual change to a customer's Balance with a required reason, such as writing 
 _Avoid_: Fake payment, nota de crédito
 
 **Pago (Payment)**:
-Money a customer hands over, recorded with its payment method. It lowers the customer's Balance as a whole and is never allocated to an Order, though it may note the Order it was collected with.
+Money a customer hands over, recorded with its payment method. It lowers the customer's Balance as a whole and is never allocated to an Order, though it may note the Order it was collected with. It is dated by the day it was handed over, never later than today; a post-dated cheque is recorded on the day it is received.
 _Avoid_: Cobro, cobranza, receipt
 
 **Anular pago (Void payment)**:

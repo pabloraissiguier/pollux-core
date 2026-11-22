@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { daySchema } from './day'
+import { pastDaySchema } from './day'
 import { PAYMENT_METHODS } from './enums'
 import { moneySchema } from './money'
 import { paginationSchema } from './pagination'
@@ -34,14 +34,16 @@ export const deliveryPaymentSchema = z.object({
 export type DeliveryPaymentInput = z.input<typeof deliveryPaymentSchema>
 
 /**
- * Pago: money a Customer hands over. `paidOn` defaults to today in America/Argentina/Cordoba.
+ * Pago: money a Customer hands over. `paidOn` (the day it was handed over) defaults to today in
+ * America/Argentina/Cordoba and cannot be later than today, since it dates the credit. A
+ * post-dated cheque is recorded on the day it is received; its own date goes in `reference`.
  * `orderId` optionally notes the Order it was collected with (same Customer), for history only:
  * the Payment lowers the Balance as a whole.
  */
 export const paymentCreateSchema = deliveryPaymentSchema.extend({
   customerId: z.uuid({ message: 'Elegí un cliente válido' }),
   orderId: z.uuid({ message: 'Elegí un pedido válido' }).nullish(),
-  paidOn: daySchema.optional(),
+  paidOn: pastDaySchema('La fecha de pago no puede ser futura').optional(),
 })
 export type PaymentCreateInput = z.input<typeof paymentCreateSchema>
 

@@ -52,6 +52,11 @@ async function createOrder(
   return (await res.json()) as { id: string, number: number, totals: { total: string } }
 }
 
+/** The day after today in America/Argentina/Cordoba, `yyyy-mm-dd`. */
+function tomorrowInCordoba(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Cordoba' }).format(new Date(Date.now() + 24 * 60 * 60 * 1000))
+}
+
 beforeAll(async () => {
   owner = await t.createOwnedBusiness('Distribuidora Entregas')
 })
@@ -129,6 +134,33 @@ describe('delivering an Order', () => {
 
     expect(res.status).toBe(400)
     expect((await res.json()).error.details).toHaveProperty('deliveredOn')
+  })
+
+  it('refuses a Delivered date later than today in Córdoba, and leaves the Order Pending', async () => {
+    const customer = await createCustomer()
+    const product = await createProduct('100.00', 10)
+    const order = await createOrder(customer, [{ productId: product.id, quantity: 1 }])
+
+    const res = await post(`/orders/${order.id}/deliver`, { deliveredOn: tomorrowInCordoba() })
+
+    expect(res.status).toBe(400)
+    const { error } = await res.json()
+    expect(error.code).toBe('validation_error')
+    expect(error.details.deliveredOn).toEqual(['La fecha entregada no puede ser futura'])
+    expect((await (await api(`/orders/${order.id}`)).json()).status).toBe('pending')
+    expect(await onHandOf(product.id)).toBe(10)
+  })
+
+  it('accepts today in Córdoba as the Delivered date', async () => {
+    const customer = await createCustomer()
+    const product = await createProduct('100.00', 10)
+    const order = await createOrder(customer, [{ productId: product.id, quantity: 1 }])
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Cordoba' }).format(new Date())
+
+    const res = await post(`/orders/${order.id}/deliver`, { deliveredOn: today })
+
+    expect(res.status).toBe(200)
+    expect((await res.json()).deliveredOn).toBe(today)
   })
 })
 
@@ -300,22 +332,22 @@ describe('a Customer\'s Balance and statement', () => {
   it('filters by date range, keeping the running Balance from every earlier entry', async () => {
     const customer = await createCustomer()
     const product = await createProduct('100.00', 50)
-    for (const [day, quantity] of [['2026-10-31', 1], ['2026-11-05', 2], ['2026-11-20', 4], ['2026-12-01', 8]] as const) {
+    for (const [day, quantity] of [['2026-09-30', 1], ['2026-10-05', 2], ['2026-10-20', 4], ['2026-11-01', 8]] as const) {
       const order = await createOrder(customer, [{ productId: product.id, quantity }])
       await post(`/orders/${order.id}/deliver`, { deliveredOn: day })
     }
 
-    const november = await statementOf(customer.id, '?from=2026-11-01&to=2026-11-30')
+    const october = await statementOf(customer.id, '?from=2026-10-01&to=2026-10-31')
 
-    expect(november.total).toBe(2)
-    expect(november.items.map((e: { entryDate: string, balance: string }) => [e.entryDate, e.balance])).toEqual([
-      ['2026-11-05', '300.00'],
-      ['2026-11-20', '700.00'],
+    expect(october.total).toBe(2)
+    expect(october.items.map((e: { entryDate: string, balance: string }) => [e.entryDate, e.balance])).toEqual([
+      ['2026-10-05', '300.00'],
+      ['2026-10-20', '700.00'],
     ])
-    const fromOnly = await statementOf(customer.id, '?from=2026-11-20')
-    expect(fromOnly.items.map((e: { entryDate: string }) => e.entryDate)).toEqual(['2026-11-20', '2026-12-01'])
+    const fromOnly = await statementOf(customer.id, '?from=2026-10-20')
+    expect(fromOnly.items.map((e: { entryDate: string }) => e.entryDate)).toEqual(['2026-10-20', '2026-11-01'])
     const page = await statementOf(customer.id, '?limit=1&offset=1')
-    expect(page).toMatchObject({ total: 4, items: [{ entryDate: '2026-11-05', balance: '300.00' }] })
+    expect(page).toMatchObject({ total: 4, items: [{ entryDate: '2026-10-05', balance: '300.00' }] })
   })
 
   it('refuses a date range that ends before it starts', async () => {
