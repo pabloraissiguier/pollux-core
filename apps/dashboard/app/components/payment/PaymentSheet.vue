@@ -118,9 +118,9 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
             variant="subtle"
           />
           <CustomerBalanceFigure
-            v-if="newBalance !== null"
+            v-if="newBalance !== null && customer"
             :balance="newBalance"
-            :label="`Saldo de ${customer?.name}`"
+            :label="`Saldo de ${customer.name}`"
             class="py-2"
           />
           <UButton

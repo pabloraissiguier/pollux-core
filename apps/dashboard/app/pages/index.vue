@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { sumMoney } from '@pollux/contracts'
+import { ordersCountLabel } from '~/utils/orders'
 
 /**
  * Inicio: the day at a glance (today's Orders still to deliver, what all Customers owe) and the
@@ -79,7 +80,7 @@ const paying = ref(false)
                 role="status"
                 aria-label="Pedidos para entregar hoy"
                 class="text-muted"
-              >{{ toDeliver.total === 0 ? 'Ninguno' : toDeliver.total === 1 ? '1 pedido' : `${toDeliver.total} pedidos` }}</span>
+              >{{ toDeliver.total ? ordersCountLabel(toDeliver.total) : 'Ninguno' }}</span>
             </div>
             <span
               v-if="toDeliver && toDeliver.total > toDeliver.items.length"
