@@ -12,6 +12,7 @@ import {
   paymentMethodLabels,
   stockAdjustmentReasonLabels,
   stockMovementTypeLabels,
+  todayInArgentina,
   vatConditionLabels
 } from '../app/utils/format'
 
@@ -57,6 +58,14 @@ describe('formatMoney', () => {
 
   it('keeps every cent of a large decimal string', () => {
     expect(formatMoney('999999999999.99')).toBe(`$${NBSP}999.999.999.999,99`)
+  })
+})
+
+describe('todayInArgentina', () => {
+  it('is the calendar date in Argentina, even when UTC has already moved to the next day', () => {
+    // 01:30 UTC on 21/11 is still 22:30 on 20/11 in Argentina (UTC-3).
+    expect(todayInArgentina(new Date('2026-11-21T01:30:00Z'))).toBe('2026-11-20')
+    expect(todayInArgentina(new Date('2026-11-21T03:00:00Z'))).toBe('2026-11-21')
   })
 })
 

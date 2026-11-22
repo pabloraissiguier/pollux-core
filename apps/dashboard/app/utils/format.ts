@@ -59,6 +59,16 @@ export function formatDate(value: string): string {
   return dateInArgentina.format(instant)
 }
 
+const isoDayInArgentina = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/**
+ * Today's calendar date in Argentina as `yyyy-mm-dd` (the `en-CA` format), the value a date input
+ * takes. Late at night it is still today here even when it is already tomorrow in UTC.
+ */
+export function todayInArgentina(now: Date = new Date()): string {
+  return isoDayInArgentina.format(now)
+}
+
 /** Formats a CUIT as it's typed: digits only, up to 11, shown as `XX-XXXXXXXX-X`. */
 export function maskCuit(input: string): string {
   const digits = input.replace(/\D/g, '').slice(0, 11)
