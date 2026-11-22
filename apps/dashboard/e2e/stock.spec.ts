@@ -68,3 +68,60 @@ test('the catalog and the Product page show On-hand, Reserved and Available stoc
   await expect(stocked).toContainText('Disponible 1.200')
   await expect(stocked.getByRole('img', { name: 'Stock disponible negativo' })).toHaveCount(0)
 })
+
+test('the owner types counted quantities for several Products and saves them in one request', { tag: '@desktop' }, async ({ page, createOwner, signIn }) => {
+  const userId = await createOwner('Gio Pack')
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+  await createProduct(page, { code: 'VAS-180', name: 'Vaso térmico 180 cc', price: '1000' })
+  await createProduct(page, { code: 'BAN-1', name: 'Bandeja 103', price: '500' })
+  await adjustStock(page, { direction: 'Sumar', quantity: '10', reason: 'Conteo inicial' })
+  await createProduct(page, { code: 'LAV-1', name: 'Lavandina 1 L', price: '950' })
+
+  // Reached from the catalog.
+  await page.goto('/productos')
+  await page.getByRole('link', { name: 'Conteo inicial' }).click()
+  await expect(page.getByRole('heading', { name: 'Conteo inicial', level: 1 })).toBeVisible()
+  const save = page.getByRole('button', { name: /Guardar conteo/ })
+  await expect(save).toBeDisabled()
+
+  // A count that isn't a whole number is refused before asking the API.
+  const vasos = page.getByRole('textbox', { name: 'Contado de Vaso térmico 180 cc' })
+  await vasos.fill('2,5')
+  await expect(page.getByText('Ingresá un número entero, sin signo ni decimales')).toBeVisible()
+  await vasos.fill('1.200')
+
+  // Searching narrows the list but keeps what was already typed.
+  const search = page.getByRole('searchbox', { name: 'Buscar por nombre, código o marca' })
+  await search.fill('bandeja')
+  await expect(vasos).toHaveCount(0)
+  await page.getByRole('textbox', { name: 'Contado de Bandeja 103' }).fill('7')
+  await search.fill('')
+  await expect(vasos).toHaveValue('1.200')
+  await expect(save).toHaveText('Guardar conteo (2)')
+  // Typing then searching right away doesn't leave the old error on the fixed count.
+  await expect(page.getByText('Ingresá un número entero, sin signo ni decimales')).toBeHidden()
+
+  const stockRequests: string[] = []
+  page.on('request', (request) => {
+    if (request.url().includes('/stock/')) stockRequests.push(`${request.method()} ${new URL(request.url()).pathname}`)
+  })
+  await save.click()
+  await expect(page.getByText('Conteo guardado', { exact: true })).toBeVisible()
+  expect(stockRequests).toEqual(['POST /stock/initial-count'])
+
+  // The list shows the new On-hand stock and clears the typed counts.
+  await expect(vasos).toHaveValue('')
+  const rows = page.getByRole('region', { name: 'Productos a contar' }).getByRole('listitem')
+  await expect(rows.filter({ hasText: 'Vaso térmico 180 cc' })).toContainText('Físico 1.200')
+  await expect(rows.filter({ hasText: 'Bandeja 103' })).toContainText('Físico 7')
+  await expect(rows.filter({ hasText: 'Lavandina 1 L' })).toContainText('Físico 0')
+
+  // Each counted Product records the difference as an initial-count adjustment.
+  await page.goto('/productos')
+  await page.getByRole('link', { name: /Bandeja 103/ }).click()
+  const movements = page.getByRole('region', { name: 'Movimientos de stock' }).getByRole('listitem')
+  await expect(movements).toHaveCount(2)
+  await expect(movements.first()).toContainText('-3')
+  await expect(movements.first()).toContainText('Ajuste de stock · Conteo inicial')
+})

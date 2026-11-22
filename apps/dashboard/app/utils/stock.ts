@@ -48,6 +48,26 @@ export const stockAdjustmentReasonItems = STOCK_ADJUSTMENT_REASONS.map(value => 
   label: stockAdjustmentReasonLabels[value]
 }))
 
+/**
+ * The initial count form: one typed count per Product id. A blank count means "not counted" and
+ * is left out; the rest go to the API as `{ productId, quantity }` in one request.
+ */
+export const initialCountFormSchema = z
+  .object({
+    counts: z.record(z.string(), z.string().refine(
+      v => v.trim() === '' || unitsInputSchema.safeParse(v).success,
+      'Ingresá un número entero, sin signo ni decimales'
+    ))
+  })
+  .transform(({ counts }) => Object.entries(counts)
+    .filter(([, typed]) => typed.trim() !== '')
+    .map(([productId, typed]) => ({ productId, quantity: unitsInputSchema.parse(typed) })))
+
+/** How many Products have a count typed in. */
+export function typedCountTotal(counts: Record<string, string>): number {
+  return Object.values(counts).filter(v => v.trim() !== '').length
+}
+
 /** What caused a Stock movement, in words: "Ajuste de stock · Rotura", "Entrega de pedido N° 12". */
 export function movementCause(movement: StockMovement): string {
   const type = stockMovementTypeLabels[movement.type]

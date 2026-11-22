@@ -84,6 +84,13 @@ function productSubtitle(product: Product) {
             variant="ghost"
           />
           <UButton
+            to="/productos/conteo-inicial"
+            icon="i-lucide-clipboard-list"
+            aria-label="Conteo inicial"
+            color="neutral"
+            variant="ghost"
+          />
+          <UButton
             to="/productos/nuevo"
             icon="i-lucide-plus"
             label="Nuevo producto"
