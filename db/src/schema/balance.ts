@@ -1,4 +1,4 @@
-import { PAYMENT_METHODS } from '@pollux/contracts'
+import { BALANCE_ENTRY_TYPES, PAYMENT_METHODS } from '@pollux/contracts'
 import { sql } from 'drizzle-orm'
 import { check, date, foreignKey, index, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { app, businessId, createdAt, id, money } from './_shared'
@@ -47,14 +47,7 @@ export const payments = app.table('payments', {
   check('payments_void_check', sql`(${t.voidedAt} is null) = (${t.voidReason} is null)`),
 ]).enableRLS()
 
-export const balanceEntryType = app.enum('balance_entry_type', [
-  'order_delivered',
-  'delivery_undone',
-  'payment',
-  'payment_voided',
-  'opening_balance',
-  'adjustment',
-])
+export const balanceEntryType = app.enum('balance_entry_type', BALANCE_ENTRY_TYPES)
 
 /**
  * Movimiento de cuenta. A customer's Balance is the sum of `amount` over their entries:
