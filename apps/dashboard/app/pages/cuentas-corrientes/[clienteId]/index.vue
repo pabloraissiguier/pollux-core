@@ -57,11 +57,34 @@ const { data: statement, status, refresh: refreshStatement } = await useAsyncDat
   { watch: [fromDay, toDay, page] }
 )
 
-const paying = ref(false)
+const { data: hasOpeningBalance, refresh: refreshOpeningBalance } = await useHasOpeningBalance(customerId)
 
-function onPaymentRecorded() {
+const paying = ref(false)
+const entryKind = ref<'opening' | 'adjustment'>('adjustment')
+const entryOpen = ref(false)
+
+function addEntry(kind: 'opening' | 'adjustment') {
+  entryKind.value = kind
+  entryOpen.value = true
+}
+
+// Saldo inicial only while the Customer has none; the print view keeps the range on screen.
+const moreActions = computed(() => [
+  ...(hasOpeningBalance.value === false
+    ? [{ label: 'Saldo inicial', icon: 'i-lucide-file-spreadsheet', onSelect: () => addEntry('opening') }]
+    : []),
+  { label: 'Ajustar saldo', icon: 'i-lucide-scale', onSelect: () => addEntry('adjustment') },
+  { label: 'Imprimir resumen', icon: 'i-lucide-printer', to: { path: `/cuentas-corrientes/${customerId}/imprimir`, query: { desde: fromDay.value, hasta: toDay.value } } }
+])
+
+function onBalanceChanged() {
   refreshCurrent()
   refreshStatement()
+}
+
+function onEntrySaved() {
+  onBalanceChanged()
+  if (entryKind.value === 'opening') refreshOpeningBalance()
 }
 
 const hasRange = computed(() => !!fromDay.value || !!toDay.value)
@@ -90,6 +113,17 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
             icon="i-lucide-banknote"
             @click="paying = true"
           />
+          <UDropdownMenu
+            :items="moreActions"
+            :content="{ align: 'end' }"
+          >
+            <UButton
+              icon="i-lucide-ellipsis-vertical"
+              aria-label="Más acciones"
+              color="neutral"
+              variant="ghost"
+            />
+          </UDropdownMenu>
         </template>
       </UDashboardNavbar>
 
@@ -203,7 +237,15 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
         v-if="current"
         v-model:open="paying"
         :customer="current.customer"
-        @recorded="onPaymentRecorded"
+        @recorded="onBalanceChanged"
+      />
+      <BalanceEntryModal
+        v-if="current"
+        v-model:open="entryOpen"
+        :kind="entryKind"
+        :customer="current.customer"
+        :balance="current.balance"
+        @saved="onEntrySaved"
       />
     </template>
   </UDashboardPanel>

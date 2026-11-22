@@ -34,12 +34,35 @@ const { data: recentPayments, refresh: refreshPayments } = await useAsyncData(
   () => request(c => c.payments.$get({ query: { customerId: id, limit: String(RECENT_PAYMENTS) } }))
 )
 
+const { data: hasOpeningBalance, refresh: refreshOpeningBalance } = await useHasOpeningBalance(id)
+
 const paying = ref(false)
 
 // Recording or voiding a Payment moves the Balance and the list.
 function onPaymentsChanged() {
   refreshBalance()
   refreshPayments()
+}
+
+const entryKind = ref<'opening' | 'adjustment'>('adjustment')
+const entryOpen = ref(false)
+
+function addEntry(kind: 'opening' | 'adjustment') {
+  entryKind.value = kind
+  entryOpen.value = true
+}
+
+// Saldo inicial only while the Customer has none; after that, corrections are adjustments.
+const balanceActions = computed(() => [
+  ...(hasOpeningBalance.value === false
+    ? [{ label: 'Saldo inicial', icon: 'i-lucide-file-spreadsheet', onSelect: () => addEntry('opening') }]
+    : []),
+  { label: 'Ajustar saldo', icon: 'i-lucide-scale', onSelect: () => addEntry('adjustment') }
+])
+
+function onEntrySaved() {
+  refreshBalance()
+  if (entryKind.value === 'opening') refreshOpeningBalance()
 }
 
 const editing = ref(false)
@@ -119,6 +142,17 @@ function onSaved(saved: Customer) {
                 color="neutral"
                 variant="outline"
               />
+              <UDropdownMenu
+                :items="balanceActions"
+                :content="{ align: 'end' }"
+              >
+                <UButton
+                  icon="i-lucide-ellipsis-vertical"
+                  aria-label="Más acciones"
+                  color="neutral"
+                  variant="outline"
+                />
+              </UDropdownMenu>
             </div>
           </div>
         </UCard>
@@ -320,6 +354,14 @@ function onSaved(saved: Customer) {
           v-model:open="paying"
           :customer="customer"
           @recorded="onPaymentsChanged"
+        />
+        <BalanceEntryModal
+          v-if="balance"
+          v-model:open="entryOpen"
+          :kind="entryKind"
+          :customer="customer"
+          :balance="balance.balance"
+          @saved="onEntrySaved"
         />
         <CustomerEditModal
           v-model:open="editing"

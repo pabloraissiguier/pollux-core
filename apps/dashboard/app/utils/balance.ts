@@ -1,8 +1,11 @@
+import { addMoney, balanceAdjustmentSchema, pastDaySchema } from '@pollux/contracts'
 import type { Money, PaymentMethod } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
+import { z } from 'zod'
 import type { ApiClient } from '~/composables/useApi'
-import { balanceEntryTypeLabels, formatMoney } from './format'
+import { balanceEntryTypeLabels, formatMoney, todayInArgentina } from './format'
 import type { BalanceEntryType } from './format'
+import { paymentAmountInputSchema } from './payments'
 
 /** A Customer's Balance as the API returns it: `{ customer, balance }`. */
 export type CustomerBalance = InferResponseType<ApiClient['customers'][':id']['balance']['$get'], 200>
@@ -63,8 +66,65 @@ export function statementAmountText(amount: Money): string {
   return `${side === 'debit' ? 'Debe' : 'Haber'} ${formatMoney(unsigned)}`
 }
 
+/** A Balance in a list, in words: "Debe $ 1.500,00", "A favor $ 300,00", "Al día". */
+export function balanceAmountText(balance: Money): string {
+  if (balance === '0.00') return 'Al día'
+  const { side, amount } = debitOrCredit(balance)
+  return `${side === 'debit' ? 'Debe' : 'A favor'} ${formatMoney(amount)}`
+}
+
 /** What a Balance means, in words, so it never rests on color: "Debe", "A favor del cliente", "Al día". */
 export function balanceCaption(balance: Money): string {
   if (balance === '0.00') return 'Al día'
   return debitOrCredit(balance).side === 'debit' ? 'Debe' : 'A favor del cliente'
+}
+
+/**
+ * Which way a manual entry moves the Balance: `debit` the Customer owes more, `credit` less. A
+ * phone's decimal keypad has no minus sign, so the amount is typed without one and the side is
+ * chosen apart.
+ */
+export const balanceSideSchema = z.enum(['debit', 'credit'])
+export type BalanceSide = z.infer<typeof balanceSideSchema>
+
+/** The signed amount the API takes: a credit is negative. */
+export function signedBalanceAmount(side: BalanceSide, amount: Money): Money {
+  return side === 'debit' ? amount : `-${amount}`
+}
+
+/** The Balance after a manual entry, while it's typed; `null` until the amount is valid. */
+export function balanceAfter(balance: Money, side: BalanceSide, amountInput: string): Money | null {
+  const amount = paymentAmountInputSchema.safeParse(amountInput)
+  return amount.success ? addMoney(balance, signedBalanceAmount(side, amount.data)) : null
+}
+
+/**
+ * The "Saldo inicial" form: what the Customer owed (or had in their favor) before the app, and
+ * the day it was taken, never in the future (#59 makes the API refuse it too; #62 moves the form
+ * to the shared schema).
+ */
+export const openingBalanceFormSchema = z.object({
+  side: balanceSideSchema,
+  amount: paymentAmountInputSchema,
+  entryDate: pastDaySchema('La fecha del saldo inicial no puede ser futura')
+})
+
+/** The "Ajustar saldo" form: a side, an amount, the required reason and its day, never in the future. */
+export const balanceAdjustmentFormSchema = z.object({
+  side: balanceSideSchema,
+  amount: paymentAmountInputSchema,
+  reason: balanceAdjustmentSchema.shape.reason,
+  entryDate: pastDaySchema('La fecha del ajuste no puede ser futura')
+})
+
+export interface ManualEntryFormState {
+  side: BalanceSide
+  amount: string
+  reason: string
+  entryDate: string
+}
+
+/** A fresh manual-entry form: the given side, no amount, dated today. */
+export function manualEntryFormState(side: BalanceSide): ManualEntryFormState {
+  return { side, amount: '', reason: '', entryDate: todayInArgentina() }
 }
