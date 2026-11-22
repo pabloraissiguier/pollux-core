@@ -10,7 +10,9 @@ const links: NavigationMenuItem[] = [
   { label: 'Pedidos', icon: 'i-lucide-clipboard-list', to: '/pedidos', onSelect: () => { open.value = false } },
   { label: 'Clientes', icon: 'i-lucide-users', to: '/clientes', onSelect: () => { open.value = false } },
   { label: 'Cuentas corrientes', icon: 'i-lucide-wallet', to: '/cuentas-corrientes', onSelect: () => { open.value = false } },
-  { label: 'Productos', icon: 'i-lucide-boxes', to: '/productos', onSelect: () => { open.value = false } }
+  { label: 'Productos', icon: 'i-lucide-boxes', to: '/productos', onSelect: () => { open.value = false } },
+  { label: 'Compras', icon: 'i-lucide-package-plus', to: '/compras', onSelect: () => { open.value = false } },
+  { label: 'Proveedores', icon: 'i-lucide-truck', to: '/proveedores', onSelect: () => { open.value = false } }
 ]
 </script>
 
