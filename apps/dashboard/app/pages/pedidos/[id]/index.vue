@@ -224,12 +224,14 @@ async function undoDelivery() {
           as="section"
           aria-labelledby="pedido-pagos"
         >
-          <h2
-            id="pedido-pagos"
-            class="font-semibold text-highlighted"
-          >
-            Pagos
-          </h2>
+          <template #header>
+            <h2
+              id="pedido-pagos"
+              class="font-semibold text-highlighted"
+            >
+              Pagos
+            </h2>
+          </template>
           <PaymentList
             :payments="order.payments"
             @voided="onPaymentVoided"

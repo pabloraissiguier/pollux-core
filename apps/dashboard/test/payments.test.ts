@@ -3,7 +3,7 @@ import { todayInArgentina } from '../app/utils/format'
 import { paymentFormSchema } from '../app/utils/payments'
 
 const form = (overrides: Record<string, string> = {}) => ({
-  method: 'cash',
+  choice: 'cash',
   amount: '1.000,50',
   reference: '',
   day: '2026-01-10',
@@ -22,7 +22,7 @@ describe('paymentFormSchema', () => {
   })
 
   it('records no Payment for "Cuenta corriente (sin pago)", whatever the amount field holds', () => {
-    expect(paymentFormSchema(true).parse(form({ method: 'account', amount: '' }))).toEqual({ day: '2026-01-10', payment: null })
+    expect(paymentFormSchema(true).parse(form({ choice: 'noPayment', amount: '' }))).toEqual({ day: '2026-01-10', payment: null })
   })
 
   it('refuses a zero or missing amount on a Payment', () => {

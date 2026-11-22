@@ -1,4 +1,4 @@
-import { daySchema, PAYMENT_METHODS, paymentAmountSchema, paymentVoidSchema } from '@pollux/contracts'
+import { daySchema, PAYMENT_METHODS, paymentAmountSchema } from '@pollux/contracts'
 import type { PaymentMethod } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
 import { z } from 'zod'
@@ -9,10 +9,10 @@ import { parseDecimalInput, todayInArgentina } from './format'
 export type Payment = InferResponseType<ApiClient['payments'][':id']['$get'], 200>
 
 /**
- * What the Payment sheet offers: a Payment method, or (only when delivering) `account`,
- * "Cuenta corriente (sin pago)", which is no Payment at all (ADR-0001).
+ * What the Payment sheet offers: a Payment method, or (only when delivering) `noPayment`,
+ * shown as "Cuenta corriente (sin pago)": no Payment at all, so not a method (ADR-0001).
  */
-export type PaymentChoice = PaymentMethod | 'account'
+export type PaymentChoice = PaymentMethod | 'noPayment'
 
 /** An amount typed the es-AR way ("1.234,50"), checked by the API's own Payment amount schema. */
 export const paymentAmountInputSchema = z
@@ -29,21 +29,21 @@ export const paymentAmountInputSchema = z
  * Payment to record, or `null` for "Cuenta corriente (sin pago)".
  */
 export function paymentFormSchema(delivering: boolean) {
-  return paymentFormFields(delivering).transform(({ method, amount, reference, day }, ctx) => {
-    if (method === 'account') return { day, payment: null }
+  return paymentFormFields(delivering).transform(({ choice, amount, reference, day }, ctx) => {
+    if (choice === 'noPayment') return { day, payment: null }
     const parsed = paymentAmountInputSchema.safeParse(amount)
     if (!parsed.success) {
       for (const issue of parsed.error.issues) ctx.addIssue({ code: 'custom', message: issue.message, path: ['amount'] })
       return z.NEVER
     }
-    return { day, payment: { method, amount: parsed.data, reference: reference || null } }
+    return { day, payment: { method: choice, amount: parsed.data, reference: reference || null } }
   })
 }
 export type PaymentFormOutput = z.output<ReturnType<typeof paymentFormSchema>>
 
 function paymentFormFields(delivering: boolean) {
   return z.object({
-    method: z.enum(['account', ...PAYMENT_METHODS], { message: 'Elegí un medio de pago' }),
+    choice: z.enum(['noPayment', ...PAYMENT_METHODS], { message: 'Elegí un medio de pago' }),
     amount: z.string(),
     reference: z.string().trim().max(200),
     day: daySchema.refine(day => day <= todayInArgentina(), {
@@ -51,6 +51,3 @@ function paymentFormFields(delivering: boolean) {
     })
   })
 }
-
-/** The void form: the reason the API requires. */
-export const paymentVoidFormSchema = paymentVoidSchema

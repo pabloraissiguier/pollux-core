@@ -62,7 +62,6 @@ function startVoid(payment: Payment) {
           color="error"
           variant="link"
           size="sm"
-          class="px-0"
           @click="startVoid(payment)"
         />
       </span>

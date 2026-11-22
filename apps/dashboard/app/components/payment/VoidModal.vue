@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
-import { paymentVoidFormSchema } from '~/utils/payments'
+import { paymentVoidSchema } from '@pollux/contracts'
 import type { Payment } from '~/utils/payments'
 
 /**
@@ -21,7 +21,7 @@ watch(open, (isOpen) => {
   if (isOpen) state.reason = ''
 })
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof paymentVoidFormSchema>>) {
+async function onSubmit({ data }: FormSubmitEvent<z.output<typeof paymentVoidSchema>>) {
   if (voiding.value) return
   voiding.value = true
   try {
@@ -48,7 +48,7 @@ async function onSubmit({ data }: FormSubmitEvent<z.output<typeof paymentVoidFor
     <template #body>
       <UForm
         ref="form"
-        :schema="paymentVoidFormSchema"
+        :schema="paymentVoidSchema"
         :state="state"
         class="flex flex-col gap-4"
         @submit="onSubmit"

@@ -22,8 +22,8 @@ const emit = defineEmits<{ delivered: [order: Order], recorded: [payment: Paymen
 
 const { request } = useApi()
 
-const delivering = computed(() => !!props.order)
-const schema = computed(() => paymentFormSchema(delivering.value))
+const isDelivery = computed(() => !!props.order)
+const schema = computed(() => paymentFormSchema(isDelivery.value))
 const customer = computed(() => {
   const found = props.order?.customer ?? props.customer
   if (!found) throw new Error('PaymentSheet needs an order or a customer')
@@ -31,12 +31,12 @@ const customer = computed(() => {
 })
 
 const methodItems = PAYMENT_METHODS.map(value => ({ value, label: paymentMethodLabels[value] }))
-const items = computed<{ value: PaymentChoice, label: string, description?: string }[]>(() => delivering.value
-  ? [{ value: 'account', label: 'Cuenta corriente (sin pago)', description: 'El total se suma al saldo del cliente.' }, ...methodItems]
+const items = computed<{ value: PaymentChoice, label: string, description?: string }[]>(() => isDelivery.value
+  ? [{ value: 'noPayment', label: 'Cuenta corriente (sin pago)', description: 'El total se suma al saldo del cliente.' }, ...methodItems]
   : methodItems)
 
-const state = reactive<{ method: PaymentChoice, amount: string, reference: string, day: string }>({
-  method: 'account',
+const state = reactive<{ choice: PaymentChoice, amount: string, reference: string, day: string }>({
+  choice: 'noPayment',
   amount: '',
   reference: '',
   day: todayInArgentina()
@@ -47,11 +47,11 @@ const done = ref<{ payment: { method: Payment['method'], amount: string } | null
 /** The Customer's Balance right after, once read. */
 const newBalance = ref<string | null>(null)
 
-// Each opening starts over: on account when delivering, cash otherwise; the amount at the total.
+// Each opening starts over: no Payment when delivering, cash otherwise; the amount at the total.
 watch(open, (isOpen) => {
   if (!isOpen) return
   Object.assign(state, {
-    method: delivering.value ? 'account' : 'cash',
+    choice: isDelivery.value ? 'noPayment' : 'cash',
     amount: props.order ? priceForInput(props.order.totals.total) : '',
     reference: '',
     day: todayInArgentina()
@@ -104,7 +104,7 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
       <div class="mx-auto flex w-full max-w-lg flex-col gap-4">
         <template v-if="done">
           <UAlert
-            :title="delivering ? 'Pedido entregado' : 'Pago registrado'"
+            :title="isDelivery ? 'Pedido entregado' : 'Pago registrado'"
             :description="done.payment ? `${statementPaymentLabels[done.payment.method]} de ${formatMoney(done.payment.amount)}` : undefined"
             icon="i-lucide-circle-check"
             color="success"
@@ -140,21 +140,21 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
           </p>
 
           <UFormField
-            name="method"
-            :label="delivering ? 'Pago' : 'Medio de pago'"
+            name="choice"
+            :label="isDelivery ? 'Pago' : 'Medio de pago'"
           >
             <URadioGroup
-              v-model="state.method"
+              v-model="state.choice"
               :items="items"
               variant="card"
             />
           </UFormField>
 
-          <template v-if="state.method !== 'account'">
+          <template v-if="state.choice !== 'noPayment'">
             <UFormField
               name="amount"
               label="Importe"
-              :description="order ? 'Si paga una parte, cambialo.' : undefined"
+              :description="isDelivery ? 'Si paga una parte, cambialo.' : undefined"
               required
             >
               <UInput
@@ -182,7 +182,7 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
 
           <UFormField
             name="day"
-            :label="delivering ? 'Fecha entregada' : 'Fecha de pago'"
+            :label="isDelivery ? 'Fecha entregada' : 'Fecha de pago'"
             required
           >
             <UInput
@@ -195,8 +195,8 @@ async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
 
           <UButton
             type="submit"
-            :label="delivering ? 'Confirmar entrega' : 'Registrar pago'"
-            :icon="delivering ? 'i-lucide-truck' : 'i-lucide-banknote'"
+            :label="isDelivery ? 'Confirmar entrega' : 'Registrar pago'"
+            :icon="isDelivery ? 'i-lucide-truck' : 'i-lucide-banknote'"
             :loading="sending"
             block
           />
