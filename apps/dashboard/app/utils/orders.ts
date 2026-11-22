@@ -7,6 +7,8 @@ import { parseDecimalInput, TIME_ZONE } from './format'
 
 /** An Order as the API returns it: Customer, Branch, lines with frozen prices, and totals. */
 export type Order = InferResponseType<ApiClient['orders'][':id']['$get'], 200>
+/** An Order in a list: the same as the detail, without its Payments. */
+export type OrderListItem = InferResponseType<ApiClient['orders']['$get'], 200>['items'][number]
 /** An Order right after saving it, with a warning per line left with negative Available stock. */
 export type SavedOrder = InferResponseType<ApiClient['orders']['$post'], 201>
 export type StockWarning = SavedOrder['warnings'][number]

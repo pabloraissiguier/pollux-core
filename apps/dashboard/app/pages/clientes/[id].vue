@@ -12,6 +12,20 @@ const { data: customer, status } = await useAsyncData(
 
 useSeoMeta({ title: () => customer.value?.name ?? 'Cliente' })
 
+/** How many Orders the page shows; the rest are in Pedidos, filtered by this Customer. */
+const RECENT_ORDERS = 5
+
+// Same key and shape as the Statement page, so going there shows the Balance straight away.
+const { data: balance } = await useAsyncData(
+  `cliente-${id}-saldo`,
+  () => request(c => c.customers[':id'].balance.$get({ param: { id } }))
+)
+
+const { data: recentOrders } = await useAsyncData(
+  `cliente-${id}-pedidos`,
+  () => request(c => c.orders.$get({ query: { customerId: id, limit: String(RECENT_ORDERS) } }))
+)
+
 const editing = ref(false)
 const branchOpen = ref(false)
 const editedBranch = ref<Branch | null>(null)
@@ -66,13 +80,82 @@ function onSaved(saved: Customer) {
         v-else
         class="flex w-full max-w-2xl flex-col gap-4"
       >
-        <!-- Reserved for the Balance and its history, which come with deliveries (#20). -->
-        <UPageCard
-          title="Saldo"
-          description="El saldo de este cliente, sus pedidos y pagos van a aparecer acá."
-          icon="i-lucide-wallet"
-          variant="subtle"
-        />
+        <UCard>
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <CustomerBalanceFigure
+              v-if="balance"
+              :balance="balance.balance"
+            />
+            <USkeleton
+              v-else
+              class="h-20 w-40"
+            />
+            <UButton
+              :to="`/cuentas-corrientes/${customer.id}`"
+              label="Ver resumen de cuenta"
+              icon="i-lucide-receipt-text"
+              color="neutral"
+              variant="outline"
+            />
+          </div>
+        </UCard>
+
+        <UCard
+          as="section"
+          aria-labelledby="cliente-pedidos-recientes"
+        >
+          <template #header>
+            <div class="flex items-center justify-between gap-2">
+              <h2
+                id="cliente-pedidos-recientes"
+                class="font-semibold text-highlighted"
+              >
+                Pedidos recientes
+              </h2>
+              <UButton
+                v-if="recentOrders?.items.length"
+                :to="{ path: '/pedidos', query: { cliente: customer.id } }"
+                label="Ver todos"
+                color="neutral"
+                variant="link"
+              />
+            </div>
+          </template>
+
+          <p
+            v-if="!recentOrders?.items.length"
+            class="text-muted"
+          >
+            Todavía no tiene pedidos.
+          </p>
+          <UPageList
+            v-else
+            divide
+          >
+            <ULink
+              v-for="order in recentOrders.items"
+              :key="order.id"
+              :to="`/pedidos/${order.id}`"
+              class="relative flex items-center justify-between gap-3 py-3"
+            >
+              <span class="flex min-w-0 flex-col">
+                <span class="font-medium text-highlighted tabular-nums">N° {{ order.number }}</span>
+                <span class="truncate text-sm text-muted">
+                  {{ order.deliveredOn ? `Entregado ${formatDate(order.deliveredOn)}` : `Entrega ${formatDate(order.deliveryDate)}` }}
+                </span>
+              </span>
+              <span class="flex shrink-0 flex-col items-end gap-1">
+                <span class="font-medium text-highlighted tabular-nums">{{ formatMoney(order.totals.total) }}</span>
+                <UBadge
+                  :label="orderStatusLabels[order.status]"
+                  :color="orderStatusColors[order.status]"
+                  variant="subtle"
+                  size="sm"
+                />
+              </span>
+            </ULink>
+          </UPageList>
+        </UCard>
 
         <UCard>
           <template #header>

@@ -13,6 +13,9 @@ useSeoMeta({ title: () => (order.value ? `Pedido N° ${order.value.number}` : 'P
 
 const confirming = ref(false)
 const cancelling = ref(false)
+const delivering = ref(false)
+const confirmingUndo = ref(false)
+const undoing = ref(false)
 
 async function cancel() {
   if (cancelling.value) return
@@ -25,6 +28,20 @@ async function cancel() {
     if (!(error instanceof ApiRequestError)) throw error
   } finally {
     cancelling.value = false
+  }
+}
+
+async function undoDelivery() {
+  if (undoing.value) return
+  undoing.value = true
+  try {
+    order.value = await request(c => c.orders[':id']['undo-delivery'].$post({ param: { id } }))
+    confirmingUndo.value = false
+    toast.add({ title: `Entrega del pedido N° ${order.value.number} deshecha`, color: 'success', icon: 'i-lucide-check' })
+  } catch (error) {
+    if (!(error instanceof ApiRequestError)) throw error
+  } finally {
+    undoing.value = false
   }
 }
 </script>
@@ -87,6 +104,15 @@ async function cancel() {
         v-else
         class="flex w-full max-w-2xl flex-col gap-4"
       >
+        <!-- At the customer's door this is the one action that matters, so it comes first. -->
+        <UButton
+          v-if="order.status === 'pending'"
+          label="Entregar"
+          icon="i-lucide-truck"
+          block
+          @click="delivering = true"
+        />
+
         <UCard>
           <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3">
             <dt class="text-muted">
@@ -187,6 +213,16 @@ async function cancel() {
         </UCard>
 
         <UButton
+          v-if="order.status === 'delivered'"
+          label="Deshacer entrega"
+          icon="i-lucide-undo-2"
+          color="neutral"
+          variant="outline"
+          class="self-start"
+          @click="confirmingUndo = true"
+        />
+
+        <UButton
           v-if="order.status === 'pending'"
           label="Cancelar pedido"
           icon="i-lucide-x"
@@ -216,6 +252,37 @@ async function cancel() {
                 variant="outline"
                 block
                 @click="confirming = false"
+              />
+            </div>
+          </template>
+        </UModal>
+
+        <OrderDeliverSheet
+          v-model:open="delivering"
+          :order="order"
+          @delivered="order = $event"
+        />
+
+        <UModal
+          v-model:open="confirmingUndo"
+          :title="`¿Deshacer la entrega del pedido N° ${order.number}?`"
+          description="El pedido vuelve a Pendiente: el stock vuelve al depósito y se le descuenta el total al saldo del cliente. Los pagos registrados no se anulan: si hay que devolver un pago, anulalo aparte."
+        >
+          <template #footer>
+            <div class="flex w-full flex-col gap-2 sm:flex-row-reverse">
+              <UButton
+                label="Sí, deshacer entrega"
+                color="error"
+                :loading="undoing"
+                block
+                @click="undoDelivery"
+              />
+              <UButton
+                label="Volver"
+                color="neutral"
+                variant="outline"
+                block
+                @click="confirmingUndo = false"
               />
             </div>
           </template>
