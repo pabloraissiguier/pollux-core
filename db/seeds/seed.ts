@@ -1,6 +1,7 @@
 /**
  * Idempotent demo seed: one Gio Pack-like business with Categories, Products, an initial
- * stock count, Customers with Branches, Opening balances and Suppliers.
+ * stock count, Customers with Branches, Opening balances and Suppliers, plus the business's own
+ * data (placeholders) for the Delivery note.
  *
  * - Every row gets a deterministic id derived from a stable key, so re-running never duplicates.
  * - Existing rows are left untouched (on conflict do nothing), so edits made in the app survive.
@@ -54,6 +55,17 @@ const counts = { categories: 0, products: 0, stockCounts: 0, customers: 0, branc
 
 await db.transaction(async (tx) => {
   await tx.insert(s.businesses).values({ id: BUSINESS_ID, name: data.business.name }).onConflictDoNothing()
+
+  // The business's own data (placeholders, see gio-pack.data.ts): fill only what is still empty.
+  const { cuitBase, ...details } = data.business.details
+  const fill = { ...details, cuit: cuit(cuitBase) }
+  await tx
+    .update(s.businesses)
+    .set(Object.fromEntries(Object.entries(fill).map(([key, value]) => {
+      const column = s.businesses[key as keyof typeof fill]
+      return [key, sql`coalesce(${column}, ${value})`]
+    })))
+    .where(eq(s.businesses.id, BUSINESS_ID))
 
   // Owner: link the Supabase Auth user named by TEST_USER, if it exists.
   const email = process.env.TEST_USER

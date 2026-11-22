@@ -1,8 +1,12 @@
+import { VAT_CONDITIONS } from '@pollux/contracts'
 import { sql } from 'drizzle-orm'
 import { numeric, pgSchema, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 /** All business tables live here. Only `public.profiles` lives outside it. See db/CLAUDE.md. */
 export const app = pgSchema('app')
+
+/** Condición frente al IVA, shared by Customers and the business itself. */
+export const vatCondition = app.enum('vat_condition', VAT_CONDITIONS)
 
 export const id = () => uuid('id').primaryKey().default(sql`gen_random_uuid()`)
 

@@ -5,7 +5,24 @@
 
 export const business = {
   name: 'Gio Pack',
-}
+  /**
+   * The business's own data, printed on the Delivery note.
+   * PLACEHOLDERS: every value below is invented and must be replaced with Gio Pack's real data
+   * (the seed only fills fields that are still empty, so editing them later is safe).
+   */
+  details: {
+    legalName: 'Gio Pack (razón social a completar)',
+    cuitBase: '3071999888',
+    vatCondition: 'responsable_inscripto',
+    address: 'Calle a completar 123',
+    city: 'Corral de Bustos',
+    province: 'Córdoba',
+    postalCode: '2645',
+    phone: '3468 000000',
+    grossIncomeNumber: '000-000000-0',
+    activityStartDate: '2015-01-01',
+  },
+} as const
 
 export const categories = [
   'Bolsas',

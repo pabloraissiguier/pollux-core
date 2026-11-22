@@ -6,6 +6,8 @@ import { createTestVerifier } from '../src/auth/verifier'
 import { createDb } from '../src/db'
 import { testDatabaseUrl } from './test-db'
 
+type BusinessDetails = Omit<Partial<typeof businesses.$inferInsert>, 'id' | 'name' | 'createdAt' | 'updatedAt'>
+
 /**
  * Builds the app the way production does (through the factory), wired to the local test
  * database and the test verifier, where a bearer token is just the user's id.
@@ -25,9 +27,12 @@ export function setupTestApp({ corsOrigins = ['http://localhost:3010'] }: { cors
     return id
   }
 
-  /** A business with the given users as owners. */
-  async function createBusiness(name: string, ownerIds: string[]): Promise<string> {
-    const [business] = await db.insert(businesses).values({ name }).returning({ id: businesses.id })
+  /**
+   * A business with the given users as owners. `details` sets the business's own data (address,
+   * VAT condition, ...), which has no edit endpoint yet.
+   */
+  async function createBusiness(name: string, ownerIds: string[], details: BusinessDetails = {}): Promise<string> {
+    const [business] = await db.insert(businesses).values({ ...details, name }).returning({ id: businesses.id })
     for (const profileId of ownerIds) {
       await db.insert(profiles).values({ id: profileId }).onConflictDoNothing()
       await db.insert(businessMembers).values({ businessId: business!.id, profileId, role: 'owner' })
@@ -36,9 +41,9 @@ export function setupTestApp({ corsOrigins = ['http://localhost:3010'] }: { cors
   }
 
   /** The usual per-file fixture: one business with one owner. */
-  async function createOwnedBusiness(name = 'Negocio de prueba') {
+  async function createOwnedBusiness(name = 'Negocio de prueba', details: BusinessDetails = {}) {
     const userId = await createUser()
-    const businessId = await createBusiness(name, [userId])
+    const businessId = await createBusiness(name, [userId], details)
     return { userId, businessId }
   }
 
