@@ -79,6 +79,13 @@ const hasFilters = computed(() => !!(status.value || searchedDate.value || town.
 
         <template #right>
           <UButton
+            to="/pedidos/reparto"
+            icon="i-lucide-truck"
+            label="Reparto"
+            color="neutral"
+            variant="outline"
+          />
+          <UButton
             to="/pedidos/nuevo"
             icon="i-lucide-plus"
             label="Nuevo pedido"
