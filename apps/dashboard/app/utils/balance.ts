@@ -84,6 +84,9 @@ export function balanceCaption(balance: Money): string {
  * phone's decimal keypad has no minus sign, so the amount is typed without one and the side is
  * chosen apart.
  */
+/** A manual Balance entry: the Opening balance or a Balance adjustment. */
+export type BalanceEntryKind = 'opening' | 'adjustment'
+
 export const balanceSideSchema = z.enum(['debit', 'credit'])
 export type BalanceSide = z.infer<typeof balanceSideSchema>
 

@@ -34,7 +34,7 @@ const { data: recentPayments, refresh: refreshPayments } = await useAsyncData(
   () => request(c => c.payments.$get({ query: { customerId: id, limit: String(RECENT_PAYMENTS) } }))
 )
 
-const { data: hasOpeningBalance, refresh: refreshOpeningBalance } = await useHasOpeningBalance(id)
+const { items: balanceActions, kind: entryKind, open: entryOpen, saved: onEntrySaved } = await useBalanceEntryActions(id, () => refreshBalance())
 
 const paying = ref(false)
 
@@ -42,27 +42,6 @@ const paying = ref(false)
 function onPaymentsChanged() {
   refreshBalance()
   refreshPayments()
-}
-
-const entryKind = ref<'opening' | 'adjustment'>('adjustment')
-const entryOpen = ref(false)
-
-function addEntry(kind: 'opening' | 'adjustment') {
-  entryKind.value = kind
-  entryOpen.value = true
-}
-
-// Saldo inicial only while the Customer has none; after that, corrections are adjustments.
-const balanceActions = computed(() => [
-  ...(hasOpeningBalance.value === false
-    ? [{ label: 'Saldo inicial', icon: 'i-lucide-file-spreadsheet', onSelect: () => addEntry('opening') }]
-    : []),
-  { label: 'Ajustar saldo', icon: 'i-lucide-scale', onSelect: () => addEntry('adjustment') }
-])
-
-function onEntrySaved() {
-  refreshBalance()
-  if (entryKind.value === 'opening') refreshOpeningBalance()
 }
 
 const editing = ref(false)

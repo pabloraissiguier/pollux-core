@@ -25,7 +25,7 @@ test('the owner sees who owes, largest first, with the grand total', { tag: '@de
 
   await page.goto('/cuentas-corrientes')
   // 12.000,50 + 1.500,00 − 300,00: what the business is owed, net of credits.
-  await expect(page.getByRole('status', { name: 'Total a cobrar' })).toHaveText('$ 13.200,50')
+  await expect(page.getByRole('status', { name: 'Saldo total' })).toHaveText('$ 13.200,50')
 
   const rows = page.getByRole('list', { name: 'Clientes con saldo' }).getByRole('listitem')
   await expect(rows).toHaveCount(3)
@@ -45,7 +45,7 @@ test('the owner sees who owes, largest first, with the grand total', { tag: '@de
   await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('$ 0,00')
   await sheet.getByRole('button', { name: 'Listo' }).click()
   await expect(rows).toHaveCount(2)
-  await expect(page.getByRole('status', { name: 'Total a cobrar' })).toHaveText('$ 11.700,50')
+  await expect(page.getByRole('status', { name: 'Saldo total' })).toHaveText('$ 11.700,50')
 
   // A row opens that Customer's statement.
   await rows.nth(0).getByRole('link', { name: 'Almacén Don José' }).click()
@@ -142,6 +142,11 @@ test('the owner prints a statement for a date range', { tag: '@desktop' }, async
 
   await page.getByRole('link', { name: 'Volver al resumen' }).click()
   await expect(page).toHaveURL(`/cuentas-corrientes/${kiosco.id}?desde=2026-02-01`)
+
+  // A range with no entries still ends in the Balance that held through it.
+  await page.goto(`/cuentas-corrientes/${kiosco.id}/imprimir?desde=2026-02-16&hasta=2026-02-28`)
+  await expect(page.getByText('No hay movimientos en estas fechas.')).toBeVisible()
+  await expect(page.getByRole('status', { name: 'Saldo final' })).toHaveText('$ 1.300,00')
 })
 
 test('the owner adjusts a Balance with a reason and sees it on the statement', { tag: '@desktop' }, async ({ page, createOwner, signIn, callApi }) => {

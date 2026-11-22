@@ -26,8 +26,6 @@ const { data: balances, status, refresh } = await useAsyncData(
   { watch: [page] }
 )
 
-const total = computed(() => debitOrCredit(balances.value?.balanceTotal ?? '0.00'))
-
 // Registrar pago straight from a row: the Customer is the row's, so the sheet needs no picker.
 const paying = ref(false)
 const payingCustomer = ref<{ id: string, name: string } | null>(null)
@@ -54,13 +52,14 @@ async function pay(customer: { id: string, name: string }) {
       <div class="flex w-full max-w-2xl flex-col gap-4">
         <UCard v-if="balances">
           <div class="flex flex-col gap-1">
-            <span class="text-sm text-muted">Total a cobrar</span>
+            <span class="text-sm text-muted">Saldo total</span>
             <span
               role="status"
-              aria-label="Total a cobrar"
+              aria-label="Saldo total"
               class="text-3xl font-semibold text-highlighted tabular-nums"
-            >{{ total.side === 'credit' ? `-${formatMoney(total.amount)}` : formatMoney(total.amount) }}</span>
+            >{{ formatMoney(balances.balanceTotal) }}</span>
             <span class="text-sm text-muted">
+              Lo que deben, menos los saldos a favor ·
               {{ balances.total === 1 ? '1 cliente con saldo' : `${balances.total} clientes con saldo` }}
             </span>
           </div>

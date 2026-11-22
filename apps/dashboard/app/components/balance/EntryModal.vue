@@ -3,7 +3,7 @@ import type { Money } from '@pollux/contracts'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { balanceAdjustmentFormSchema, balanceAfter, manualEntryFormState, openingBalanceFormSchema, signedBalanceAmount } from '~/utils/balance'
-import type { BalanceSide } from '~/utils/balance'
+import type { BalanceEntryKind, BalanceSide } from '~/utils/balance'
 
 /**
  * A manual Balance entry for one Customer: the Opening balance (`kind: 'opening'`, once, from
@@ -12,7 +12,7 @@ import type { BalanceSide } from '~/utils/balance'
  * Balance; `kind: 'opening'` also emits it when the API says the Customer already has one.
  */
 const props = defineProps<{
-  kind: 'opening' | 'adjustment'
+  kind: BalanceEntryKind
   customer: { id: string, name: string }
   balance: Money
 }>()

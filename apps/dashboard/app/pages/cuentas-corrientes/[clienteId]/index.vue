@@ -57,35 +57,20 @@ const { data: statement, status, refresh: refreshStatement } = await useAsyncDat
   { watch: [fromDay, toDay, page] }
 )
 
-const { data: hasOpeningBalance, refresh: refreshOpeningBalance } = await useHasOpeningBalance(customerId)
-
 const paying = ref(false)
-const entryKind = ref<'opening' | 'adjustment'>('adjustment')
-const entryOpen = ref(false)
-
-function addEntry(kind: 'opening' | 'adjustment') {
-  entryKind.value = kind
-  entryOpen.value = true
-}
-
-// Saldo inicial only while the Customer has none; the print view keeps the range on screen.
-const moreActions = computed(() => [
-  ...(hasOpeningBalance.value === false
-    ? [{ label: 'Saldo inicial', icon: 'i-lucide-file-spreadsheet', onSelect: () => addEntry('opening') }]
-    : []),
-  { label: 'Ajustar saldo', icon: 'i-lucide-scale', onSelect: () => addEntry('adjustment') },
-  { label: 'Imprimir resumen', icon: 'i-lucide-printer', to: { path: `/cuentas-corrientes/${customerId}/imprimir`, query: { desde: fromDay.value, hasta: toDay.value } } }
-])
 
 function onBalanceChanged() {
   refreshCurrent()
   refreshStatement()
 }
 
-function onEntrySaved() {
-  onBalanceChanged()
-  if (entryKind.value === 'opening') refreshOpeningBalance()
-}
+const { items: entryActions, kind: entryKind, open: entryOpen, saved: onEntrySaved } = await useBalanceEntryActions(customerId, onBalanceChanged)
+
+// The print view prints the range on screen.
+const moreActions = computed(() => [
+  ...entryActions.value,
+  { label: 'Imprimir resumen', icon: 'i-lucide-printer', to: { path: `/cuentas-corrientes/${customerId}/imprimir`, query: { desde: fromDay.value, hasta: toDay.value } } }
+])
 
 const hasRange = computed(() => !!fromDay.value || !!toDay.value)
 </script>
