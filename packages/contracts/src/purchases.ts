@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { cuitSchema } from './cuit'
 import { moneySchema } from './money'
 import { daySchema } from './orders'
 import { paginationSchema } from './pagination'
@@ -11,33 +10,6 @@ const optionalText = (max: number) => z
   .max(max)
   .transform(v => (v === '' ? null : v))
   .nullish()
-
-const supplierFields = z.object({
-  name: z.string().trim().min(1, 'Ingresá el nombre').max(200),
-  /** Checked for format and check digit; stored as `XX-XXXXXXXX-X`. Empty means none. */
-  cuit: z
-    .string()
-    .trim()
-    .transform(v => (v === '' ? null : v))
-    .pipe(cuitSchema.nullable())
-    .nullish(),
-  phone: optionalText(50),
-  notes: optionalText(1000),
-})
-
-/** Proveedor: a business the distributor buys Products from. */
-export const supplierCreateSchema = supplierFields
-export type SupplierCreateInput = z.input<typeof supplierCreateSchema>
-
-/** Edit a Supplier: send only the fields that change; `null` clears an optional one. */
-export const supplierUpdateSchema = supplierFields.partial()
-export type SupplierUpdateInput = z.input<typeof supplierUpdateSchema>
-
-/** Search Suppliers by name or CUIT (`q`, with or without dashes). */
-export const supplierListQuerySchema = paginationSchema.extend({
-  q: z.string().trim().optional(),
-})
-export type SupplierListQuery = z.input<typeof supplierListQuerySchema>
 
 /** Costo unitario: what one unit cost on the Supplier's invoice. A decimal string, never negative. */
 export const unitCostSchema = moneySchema.refine(v => !v.startsWith('-'), { message: 'El costo no puede ser negativo' })

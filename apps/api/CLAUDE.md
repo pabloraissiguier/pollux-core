@@ -65,7 +65,7 @@ The suite builds its own app and never reads `DATABASE_URL`; the vitest config r
   - `POST /purchases` (`{ supplierId, purchasedOn?, invoiceNumber?, notes?, lines: [{ productId, quantity > 0, unitCost ≥ 0 }] }`, `purchasedOn` defaulting to `today()`) answers 201. One transaction checks the Supplier, locks the Products (`lockProducts`), inserts the Purchase and its lines (`position` keeps the entered order) and records one `purchase` Stock movement per line (`recordStockMovements`), raising On-hand stock. Inactive Products may be bought. `GET /purchases` lists by `supplierId` and `from`/`to` (inclusive Purchase dates), latest first; `GET /purchases/:id` is the detail (404 `purchase_not_found`).
   - A Purchase answers as `{ id, supplier { id, name }, purchasedOn, invoiceNumber, notes, createdBy { id, fullName } | null, createdAt, lines: [{ id, product { id, code, name }, quantity, unitCost, subtotal }], total }`, in detail and list alike; subtotals and total are computed on read with `multiplyMoney`/`sumMoney`.
   - **Insert-only:** there is no edit or delete route for Purchases. A mistake is fixed with a Stock adjustment.
-- `src/like.ts`: `likeContains(text)`, which escapes user text for an `ILIKE` "contains" pattern. Use it for every `q` search.
+- `src/like.ts`: `likeContains(text)`, which escapes user text for an `ILIKE` "contains" pattern (use it for every `q` search), and `cuitContains(column, text)`, which matches a stored CUIT with or without dashes. Shared CUIT input is `optionalCuitSchema` in `@pollux/contracts`.
 - `test/`: `global-setup.ts` prepares the test DB; `fixtures.ts` has `setupTestApp({ corsOrigins? })` (users, businesses, `request(path, { as, businessId })`).
 
 ## Stack

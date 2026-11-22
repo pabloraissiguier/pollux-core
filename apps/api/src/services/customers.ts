@@ -10,7 +10,7 @@ import { and, asc, count, eq, exists, ilike, inArray, or, sql } from 'drizzle-or
 import type { z } from 'zod'
 import type { Database, DbOrTx } from '../db'
 import { ApiError } from '../errors'
-import { likeContains } from '../like'
+import { cuitContains, likeContains } from '../like'
 
 // Validated request bodies, after the shared schemas' transforms (e.g. CUIT formatted, '' → null).
 type ValidCustomerCreate = z.output<typeof customerCreateSchema>
@@ -169,15 +169,13 @@ export async function listTowns(db: DbOrTx, businessId: string) {
  */
 export async function listCustomers(db: Database, businessId: string, query: ValidCustomerListQuery) {
   const { q, town, limit, offset } = query
-  // CUITs are stored as XX-XXXXXXXX-X, so both sides are compared without dashes.
-  const cuitQuery = q?.replace(/-/g, '')
   const where = and(
     eq(customers.businessId, businessId),
     q
       ? or(
           ilike(customers.name, likeContains(q)),
           ilike(customers.legalName, likeContains(q)),
-          cuitQuery ? sql`replace(${customers.cuit}, '-', '') ilike ${likeContains(cuitQuery)}` : undefined,
+          cuitContains(customers.cuit, q),
         )
       : undefined,
     town

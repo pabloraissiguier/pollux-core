@@ -4,7 +4,7 @@ import { and, asc, count, eq, ilike, or, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { DbOrTx } from '../db'
 import { ApiError } from '../errors'
-import { likeContains } from '../like'
+import { cuitContains, likeContains } from '../like'
 
 type ValidSupplierCreate = z.output<typeof supplierCreateSchema>
 type ValidSupplierUpdate = z.output<typeof supplierUpdateSchema>
@@ -20,11 +20,17 @@ const supplierColumns = {
   updatedAt: suppliers.updatedAt,
 }
 
-export const supplierNotFound = () => new ApiError(404, 'supplier_not_found', 'No encontramos el proveedor')
+const supplierNotFound = () => new ApiError(404, 'supplier_not_found', 'No encontramos el proveedor')
 
 /** This business's Supplier with this id. */
-export const isSupplier = (businessId: string, supplierId: string) =>
+const isSupplier = (businessId: string, supplierId: string) =>
   and(eq(suppliers.businessId, businessId), eq(suppliers.id, supplierId))
+
+/** Throws `supplier_not_found` unless the Supplier is in this business. */
+export async function assertSupplier(db: DbOrTx, businessId: string, supplierId: string) {
+  const [found] = await db.select({ id: suppliers.id }).from(suppliers).where(isSupplier(businessId, supplierId))
+  if (!found) throw supplierNotFound()
+}
 
 /** One Supplier, or 404 when it isn't in this business. */
 export async function getSupplier(db: DbOrTx, businessId: string, supplierId: string) {
@@ -52,14 +58,12 @@ export async function updateSupplier(db: DbOrTx, businessId: string, supplierId:
 /** Suppliers by name. `q` matches the name or the CUIT (with or without dashes). */
 export async function listSuppliers(db: DbOrTx, businessId: string, query: ValidSupplierListQuery) {
   const { q, limit, offset } = query
-  // CUITs are stored as XX-XXXXXXXX-X, so both sides are compared without dashes.
-  const cuitQuery = q?.replace(/-/g, '')
   const where = and(
     eq(suppliers.businessId, businessId),
     q
       ? or(
           ilike(suppliers.name, likeContains(q)),
-          cuitQuery ? sql`replace(${suppliers.cuit}, '-', '') ilike ${likeContains(cuitQuery)}` : undefined,
+          cuitContains(suppliers.cuit, q),
         )
       : undefined,
   )

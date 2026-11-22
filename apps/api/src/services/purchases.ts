@@ -7,7 +7,7 @@ import { today } from '../dates'
 import type { Database, DbOrTx } from '../db'
 import { ApiError } from '../errors'
 import { lockProducts, recordStockMovements } from './stock'
-import { isSupplier, supplierNotFound } from './suppliers'
+import { assertSupplier } from './suppliers'
 
 type ValidPurchaseCreate = z.output<typeof purchaseCreateSchema>
 type ValidPurchaseListQuery = z.output<typeof purchaseListQuerySchema>
@@ -21,7 +21,7 @@ const purchaseNotFound = () => new ApiError(404, 'purchase_not_found', 'No encon
  */
 async function loadPurchases(db: DbOrTx, businessId: string, ids: string[]) {
   if (ids.length === 0) return []
-  const [heads, lines] = await Promise.all([
+  const [heads, lineRows] = await Promise.all([
     db
       .select({
         id: purchases.id,
@@ -58,7 +58,7 @@ async function loadPurchases(db: DbOrTx, businessId: string, ids: string[]) {
   return ids.flatMap((id) => {
     const head = byId.get(id)
     if (!head) return []
-    const purchaseLinesOut = lines
+    const lines = lineRows
       .filter(l => l.purchaseId === id)
       .map(l => ({
         id: l.id,
@@ -75,8 +75,8 @@ async function loadPurchases(db: DbOrTx, businessId: string, ids: string[]) {
       notes: head.notes,
       createdBy: head.createdById ? { id: head.createdById, fullName: head.createdByName } : null,
       createdAt: head.createdAt,
-      lines: purchaseLinesOut,
-      total: sumMoney(purchaseLinesOut.map(l => l.subtotal)),
+      lines,
+      total: sumMoney(lines.map(l => l.subtotal)),
     }]
   })
 }
@@ -95,8 +95,7 @@ export async function getPurchase(db: DbOrTx, businessId: string, purchaseId: st
  */
 export async function createPurchase(db: Database, businessId: string, profileId: string, input: ValidPurchaseCreate) {
   return db.transaction(async (tx) => {
-    const [supplier] = await tx.select({ id: suppliers.id }).from(suppliers).where(isSupplier(businessId, input.supplierId))
-    if (!supplier) throw supplierNotFound()
+    await assertSupplier(tx, businessId, input.supplierId)
     await lockProducts(tx, businessId, input.lines.map(l => l.productId))
 
     const [purchase] = await tx
