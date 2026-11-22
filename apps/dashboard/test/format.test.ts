@@ -4,6 +4,8 @@ import {
   formatDate,
   formatMoney,
   formatPercent,
+  formatUnits,
+  formatUnitsChange,
   maskCuit,
   parseDecimalInput,
   orderStatusLabels,
@@ -22,6 +24,23 @@ describe('formatPercent', () => {
     expect(formatPercent('10.50')).toBe(`10,5${NBSP}%`)
     expect(formatPercent('2.50')).toBe(`2,5${NBSP}%`)
     expect(formatPercent('0.00')).toBe(`0${NBSP}%`)
+  })
+})
+
+describe('formatUnits', () => {
+  it('shows a stock quantity with dots for thousands', () => {
+    expect(formatUnits(0)).toBe('0')
+    expect(formatUnits(24)).toBe('24')
+    expect(formatUnits(12345)).toBe('12.345')
+    expect(formatUnits(-7)).toBe('-7')
+  })
+})
+
+describe('formatUnitsChange', () => {
+  it('shows a Stock movement with its sign', () => {
+    expect(formatUnitsChange(24)).toBe('+24')
+    expect(formatUnitsChange(-3)).toBe('-3')
+    expect(formatUnitsChange(-1500)).toBe('-1.500')
   })
 })
 
