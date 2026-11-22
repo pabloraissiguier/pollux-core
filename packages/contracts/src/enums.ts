@@ -18,3 +18,18 @@ export type StockAdjustmentReason = (typeof STOCK_ADJUSTMENT_REASONS)[number]
 /** Order states: Pendiente, Entregado, Cancelado. Delivery is a state, not an entity (docs/adr/0002). */
 export const ORDER_STATUSES = ['pending', 'delivered', 'cancelled'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
+/** Type of a Movimiento de cuenta (Balance entry). Sales add debt, payments lower it; reversals are their own entries. */
+export const BALANCE_ENTRY_TYPES = [
+  'order_delivered',
+  'delivery_undone',
+  'payment',
+  'payment_voided',
+  'opening_balance',
+  'adjustment',
+] as const
+export type BalanceEntryType = (typeof BALANCE_ENTRY_TYPES)[number]
+
+/** Type of a Movimiento de stock (Stock movement). An 'adjustment' carries a Stock adjustment reason. */
+export const STOCK_MOVEMENT_TYPES = ['order_delivered', 'delivery_undone', 'purchase', 'adjustment'] as const
+export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]

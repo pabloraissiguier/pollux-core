@@ -1,4 +1,4 @@
-import { STOCK_ADJUSTMENT_REASONS } from '@pollux/contracts'
+import { STOCK_ADJUSTMENT_REASONS, STOCK_MOVEMENT_TYPES } from '@pollux/contracts'
 import { sql } from 'drizzle-orm'
 import { check, foreignKey, index, integer, text, uuid } from 'drizzle-orm/pg-core'
 import { app, businessId, createdAt, id } from './_shared'
@@ -7,12 +7,7 @@ import { orders } from './orders'
 import { purchases } from './purchases'
 import { businesses, profiles } from './tenancy'
 
-export const stockMovementType = app.enum('stock_movement_type', [
-  'order_delivered',
-  'delivery_undone',
-  'purchase',
-  'adjustment',
-])
+export const stockMovementType = app.enum('stock_movement_type', STOCK_MOVEMENT_TYPES)
 
 export const stockAdjustmentReason = app.enum('stock_adjustment_reason', STOCK_ADJUSTMENT_REASONS)
 
