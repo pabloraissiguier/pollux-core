@@ -243,6 +243,15 @@ export async function lockOrder(tx: Transaction, businessId: string, orderId: st
   return order
 }
 
+/** Throws `order_not_found` unless the Order is in this business, and `order_not_of_customer` unless it's the Customer's. */
+export async function assertOrderOfCustomer(db: DbOrTx, businessId: string, customerId: string, orderId: string) {
+  const [order] = await db.select({ customerId: orders.customerId }).from(orders).where(isOrder(businessId, orderId))
+  if (!order) throw orderNotFound()
+  if (order.customerId !== customerId) {
+    throw new ApiError(400, 'order_not_of_customer', 'El pedido no es de este cliente')
+  }
+}
+
 /** Locks the Order row and refuses anything but a Pending Order. */
 async function lockPendingOrder(tx: Transaction, businessId: string, orderId: string) {
   const order = await lockOrder(tx, businessId, orderId)

@@ -7,15 +7,13 @@ import { today } from '../dates'
 import type { Database, DbOrTx, Transaction } from '../db'
 import { ApiError } from '../errors'
 import { assertCustomer } from './customers'
-import { isOrder, orderNotFound } from './orders'
+import { assertOrderOfCustomer } from './orders'
 
 type ValidPaymentCreate = z.output<typeof paymentCreateSchema>
 type ValidPaymentListQuery = z.output<typeof paymentListQuerySchema>
 
 const paymentNotFound = () => new ApiError(404, 'payment_not_found', 'No encontramos el pago')
 const paymentAlreadyVoided = () => new ApiError(409, 'payment_already_voided', 'El pago ya está anulado')
-const orderNotOfCustomer = () =>
-  new ApiError(400, 'order_not_of_customer', 'El pedido no es de este cliente')
 
 const isPayment = (businessId: string, paymentId: string) =>
   and(eq(payments.businessId, businessId), eq(payments.id, paymentId))
@@ -77,23 +75,21 @@ export async function orderPayments(db: DbOrTx, businessId: string, orderId: str
   return rows.map(toPayment)
 }
 
+/** A Payment to insert, already checked: the noted Order (if any) is the Customer's. */
+export interface NewPayment {
+  customerId: string
+  orderId: string | null
+  amount: string
+  method: PaymentMethod
+  reference: string | null
+  paidOn: string
+}
+
 /**
  * Inserts a Payment and its `payment` Balance entry (a credit, dated by `paidOn`) inside the
  * caller's transaction. The caller has checked the Customer and the noted Order. Returns its id.
  */
-export async function insertPayment(
-  tx: Transaction,
-  businessId: string,
-  profileId: string,
-  payment: {
-    customerId: string
-    orderId: string | null
-    amount: string
-    method: PaymentMethod
-    reference: string | null
-    paidOn: string
-  },
-) {
+export async function insertPayment(tx: Transaction, businessId: string, profileId: string, payment: NewPayment) {
   const [inserted] = await tx
     .insert(payments)
     .values({ businessId, ...payment, createdBy: profileId })
@@ -118,11 +114,7 @@ export async function recordPayment(db: Database, businessId: string, profileId:
   return db.transaction(async (tx) => {
     await assertCustomer(tx, businessId, input.customerId)
     const orderId = input.orderId ?? null
-    if (orderId) {
-      const [order] = await tx.select({ customerId: orders.customerId }).from(orders).where(isOrder(businessId, orderId))
-      if (!order) throw orderNotFound()
-      if (order.customerId !== input.customerId) throw orderNotOfCustomer()
-    }
+    if (orderId) await assertOrderOfCustomer(tx, businessId, input.customerId, orderId)
     const id = await insertPayment(tx, businessId, profileId, {
       customerId: input.customerId,
       orderId,
