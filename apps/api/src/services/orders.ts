@@ -15,7 +15,7 @@ type ValidOrderUpdate = z.output<typeof orderUpdateSchema>
 type ValidOrderListQuery = z.output<typeof orderListQuerySchema>
 type ValidOrderLine = ValidOrderCreate['lines'][number]
 
-const orderNotFound = () => new ApiError(404, 'order_not_found', 'No encontramos el pedido')
+export const orderNotFound = () => new ApiError(404, 'order_not_found', 'No encontramos el pedido')
 const branchNotOfCustomer = () =>
   new ApiError(400, 'branch_not_of_customer', 'La sucursal no es de este cliente')
 const orderNotPending = () =>
@@ -62,7 +62,7 @@ function selectOrders(db: DbOrTx, businessId: string) {
 type OrderRow = Awaited<ReturnType<typeof selectOrders>>[number]
 
 /** The lines of the given Orders, in their entered order, each with its Product. */
-async function selectLines(db: DbOrTx, businessId: string, orderIds: string[]) {
+export async function selectLines(db: DbOrTx, businessId: string, orderIds: string[]) {
   if (orderIds.length === 0) return []
   return db
     .select({
@@ -83,16 +83,21 @@ async function selectLines(db: DbOrTx, businessId: string, orderIds: string[]) {
 
 type LineRow = Awaited<ReturnType<typeof selectLines>>[number]
 
-/** The Order as the API shows it. Totals are computed on read, never stored. */
-function toOrder(row: OrderRow, lineRows: LineRow[]) {
-  const lines = lineRows.map(l => ({
+/** An Order line as the API shows it, with its subtotal. */
+export function toLine(l: LineRow) {
+  return {
     id: l.id,
     product: { id: l.productId, code: l.productCode, name: l.productName },
     quantity: l.quantity,
     unitPrice: l.unitPrice,
     discountPercent: l.discountPercent,
     subtotal: lineSubtotal(l),
-  }))
+  }
+}
+
+/** The Order as the API shows it. Totals are computed on read, never stored. */
+function toOrder(row: OrderRow, lineRows: LineRow[]) {
+  const lines = lineRows.map(toLine)
   return {
     id: row.id,
     number: row.number,
