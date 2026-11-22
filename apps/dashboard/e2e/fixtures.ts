@@ -18,6 +18,23 @@ interface Fixtures {
   openSidebar: () => Promise<void>
   /** Creates a Customer through the API in the user's first business, and returns its id. */
   createCustomer: (userId: string, input: CustomerCreateInput) => Promise<string>
+  /**
+   * Calls the API as the user, in their first business, and returns the JSON body. For data a
+   * test only needs as a starting point (Products with stock, Orders), not for the flow under test.
+   */
+  callApi: <T = { id: string }>(userId: string, method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown) => Promise<T>
+}
+
+async function callApiAs<T>(userId: string, method: string, path: string, body?: unknown): Promise<T> {
+  const [business] = await sql<{ id: string }[]>`
+    select m.business_id as id from app.business_members m where m.profile_id = ${userId} limit 1`
+  const res = await fetch(`http://localhost:${E2E_API_PORT}${path}`, {
+    method,
+    headers: { 'Authorization': `Bearer ${userId}`, 'X-Business-Id': business!.id, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status} ${await res.text()}`)
+  return await res.json() as T
 }
 
 const sql = postgres(e2eDatabaseUrl(), { max: 2, onnotice: () => {} })
@@ -60,17 +77,11 @@ export const test = base.extend<Fixtures>({
   },
   // eslint-disable-next-line no-empty-pattern
   createCustomer: async ({}, use) => {
-    await use(async (userId, input) => {
-      const [business] = await sql<{ id: string }[]>`
-        select m.business_id as id from app.business_members m where m.profile_id = ${userId} limit 1`
-      const res = await fetch(`http://localhost:${E2E_API_PORT}/customers`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${userId}`, 'X-Business-Id': business!.id, 'Content-Type': 'application/json' },
-        body: JSON.stringify(input)
-      })
-      if (!res.ok) throw new Error(`Creating a Customer failed: ${res.status} ${await res.text()}`)
-      return (await res.json() as { id: string }).id
-    })
+    await use(async (userId, input) => (await callApiAs<{ id: string }>(userId, 'POST', '/customers', input)).id)
+  },
+  // eslint-disable-next-line no-empty-pattern
+  callApi: async ({}, use) => {
+    await use(callApiAs)
   },
   openSidebar: async ({ page, isMobile }, use) => {
     await use(async () => {
