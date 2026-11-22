@@ -5,6 +5,8 @@
  *
  * - Every row gets a deterministic id derived from a stable key, so re-running never duplicates.
  * - Existing rows are left untouched (on conflict do nothing), so edits made in the app survive.
+ * - The business's own data is the one update: each field is filled only while it is empty (null),
+ *   so values entered in the app survive, and changing a value here doesn't reach a seeded database.
  * - The initial count and Opening balances are only written when the Product or Customer has none.
  * - If TEST_USER matches an existing Supabase Auth user, it is linked as owner of the business.
  *   The seed never creates users in `auth.users`.
@@ -56,16 +58,24 @@ const counts = { categories: 0, products: 0, stockCounts: 0, customers: 0, branc
 await db.transaction(async (tx) => {
   await tx.insert(s.businesses).values({ id: BUSINESS_ID, name: data.business.name }).onConflictDoNothing()
 
-  // The business's own data (placeholders, see gio-pack.data.ts): fill only what is still empty.
-  const { cuitBase, ...details } = data.business.details
-  const fill = { ...details, cuit: cuit(cuitBase) }
+  // The business's own data (placeholders, see gio-pack.data.ts): fill only the fields still empty.
+  const d = data.business.details
+  const b = s.businesses
   await tx
-    .update(s.businesses)
-    .set(Object.fromEntries(Object.entries(fill).map(([key, value]) => {
-      const column = s.businesses[key as keyof typeof fill]
-      return [key, sql`coalesce(${column}, ${value})`]
-    })))
-    .where(eq(s.businesses.id, BUSINESS_ID))
+    .update(b)
+    .set({
+      legalName: sql`coalesce(${b.legalName}, ${d.legalName})`,
+      cuit: sql`coalesce(${b.cuit}, ${cuit(d.cuitBase)})`,
+      vatCondition: sql`coalesce(${b.vatCondition}, ${d.vatCondition})`,
+      address: sql`coalesce(${b.address}, ${d.address})`,
+      city: sql`coalesce(${b.city}, ${d.city})`,
+      province: sql`coalesce(${b.province}, ${d.province})`,
+      postalCode: sql`coalesce(${b.postalCode}, ${d.postalCode})`,
+      phone: sql`coalesce(${b.phone}, ${d.phone})`,
+      grossIncomeNumber: sql`coalesce(${b.grossIncomeNumber}, ${d.grossIncomeNumber})`,
+      activityStartDate: sql`coalesce(${b.activityStartDate}, ${d.activityStartDate})`,
+    })
+    .where(eq(b.id, BUSINESS_ID))
 
   // Owner: link the Supabase Auth user named by TEST_USER, if it exists.
   const email = process.env.TEST_USER
