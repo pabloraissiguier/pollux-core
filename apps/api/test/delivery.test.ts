@@ -173,6 +173,23 @@ describe('undoing a delivery', () => {
     ])
   })
 
+  it('a fully discounted Order takes its stock out but charges nothing, and undoes cleanly', async () => {
+    const customer = await createCustomer()
+    const product = await createProduct('100.00', 10)
+    const order = await createOrder(customer, [{ productId: product.id, quantity: 2 }], { discountPercent: '100' })
+    expect(order.totals.total).toBe('0.00')
+
+    const delivered = await post(`/orders/${order.id}/deliver`)
+    expect(delivered.status).toBe(200)
+    expect(await onHandOf(product.id)).toBe(8)
+    expect(await statementOf(customer.id)).toEqual({ items: [], total: 0 })
+
+    const undone = await post(`/orders/${order.id}/undo-delivery`)
+    expect(undone.status).toBe(200)
+    expect(await onHandOf(product.id)).toBe(10)
+    expect(await balanceOf(customer.id)).toBe('0.00')
+  })
+
   it('refuses to undo an Order that is not Delivered', async () => {
     const customer = await createCustomer()
     const product = await createProduct('100.00', 10)
@@ -213,8 +230,24 @@ describe('undoing a delivery', () => {
   })
 })
 
-describe('cancelling a Delivered Order', () => {
-  it('is refused until its delivery is undone', async () => {
+describe('changing a Delivered Order', () => {
+  it('editing it is refused until its delivery is undone', async () => {
+    const customer = await createCustomer()
+    const product = await createProduct('100.00', 10)
+    const order = await createOrder(customer, [{ productId: product.id, quantity: 2 }])
+    await post(`/orders/${order.id}/deliver`)
+
+    const refused = await api(`/orders/${order.id}`, { method: 'PATCH', body: JSON.stringify({ notes: 'Corrección' }) })
+
+    expect(refused.status).toBe(409)
+    expect((await refused.json()).error.code).toBe('order_not_pending')
+
+    await post(`/orders/${order.id}/undo-delivery`)
+    const edited = await api(`/orders/${order.id}`, { method: 'PATCH', body: JSON.stringify({ notes: 'Corrección' }) })
+    expect(edited.status).toBe(200)
+  })
+
+  it('cancelling it is refused until its delivery is undone', async () => {
     const customer = await createCustomer()
     const product = await createProduct('100.00', 10)
     const order = await createOrder(customer, [{ productId: product.id, quantity: 2 }])

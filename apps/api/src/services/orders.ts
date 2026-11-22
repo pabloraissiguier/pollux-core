@@ -27,7 +27,7 @@ const orderLineProductChanged = () =>
 const productInactive = (name: string) =>
   new ApiError(409, 'product_inactive', `El producto «${name}» está inactivo y no se puede vender`)
 
-const isOrder = (businessId: string, orderId: string) =>
+export const isOrder = (businessId: string, orderId: string) =>
   and(eq(orders.businessId, businessId), eq(orders.id, orderId))
 
 const orderColumns = {

@@ -6,7 +6,7 @@ import type { z } from 'zod'
 import { today } from '../dates'
 import type { Database, Transaction } from '../db'
 import { ApiError } from '../errors'
-import { getOrder, lockOrder } from './orders'
+import { getOrder, isOrder, lockOrder } from './orders'
 import { lockProducts, recordStockMovements } from './stock'
 
 type ValidOrderDeliver = z.output<typeof orderDeliverSchema>
@@ -17,9 +17,6 @@ const orderNotDelivered = () =>
   new ApiError(409, 'order_not_delivered', 'Solo se puede deshacer la entrega de un pedido entregado')
 
 const negateMoney = (amount: string) => subtractMoney('0.00', amount)
-
-const isOrder = (businessId: string, orderId: string) =>
-  and(eq(orders.businessId, businessId), eq(orders.id, orderId))
 
 /**
  * Moves every line's quantity out of (`sign` −1) or back into (`sign` +1) On-hand stock, with

@@ -1,9 +1,9 @@
 import type { customerStatementQuerySchema } from '@pollux/contracts'
 import { balanceEntries, customers, orders, payments } from '@pollux/db/schema'
-import { and, asc, count, desc, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, asc, count, eq, gte, lte, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { DbOrTx } from '../db'
-import { customerNotFound, isCustomer } from './customers'
+import { assertCustomer, customerNotFound, isCustomer } from './customers'
 
 type ValidStatementQuery = z.output<typeof customerStatementQuerySchema>
 
@@ -37,10 +37,11 @@ export async function getCustomerBalance(db: DbOrTx, businessId: string, custome
  * running Balance counts every earlier entry, also those before `from`.
  */
 export async function getCustomerStatement(db: DbOrTx, businessId: string, customerId: string, query: ValidStatementQuery) {
-  await findCustomer(db, businessId, customerId)
+  await assertCustomer(db, businessId, customerId)
   const { from, to, limit, offset } = query
 
-  const ledgerOrder = sql`${balanceEntries.entryDate}, ${balanceEntries.createdAt}, ${balanceEntries.amount} desc, ${balanceEntries.id}`
+  // One ordering for both the running Balance and the rows, so they can't drift apart.
+  const ledgerOrder = sql`order by ${balanceEntries.entryDate}, ${balanceEntries.createdAt}, ${balanceEntries.amount} desc, ${balanceEntries.id}`
   const ledger = db
     .select({
       id: balanceEntries.id,
@@ -51,7 +52,8 @@ export async function getCustomerStatement(db: DbOrTx, businessId: string, custo
       paymentId: balanceEntries.paymentId,
       reason: balanceEntries.reason,
       createdAt: balanceEntries.createdAt,
-      balance: sql<string>`sum(${balanceEntries.amount}) over (order by ${ledgerOrder})`.as('balance'),
+      balance: sql<string>`sum(${balanceEntries.amount}) over (${ledgerOrder})`.as('balance'),
+      position: sql<number>`row_number() over (${ledgerOrder})`.as('position'),
     })
     .from(balanceEntries)
     .where(and(eq(balanceEntries.businessId, businessId), eq(balanceEntries.customerId, customerId)))
@@ -80,7 +82,7 @@ export async function getCustomerStatement(db: DbOrTx, businessId: string, custo
       .leftJoin(orders, and(eq(orders.businessId, businessId), eq(orders.id, ledger.orderId)))
       .leftJoin(payments, and(eq(payments.businessId, businessId), eq(payments.id, ledger.paymentId)))
       .where(inRange)
-      .orderBy(asc(ledger.entryDate), asc(ledger.createdAt), desc(ledger.amount), asc(ledger.id))
+      .orderBy(asc(ledger.position))
       .limit(limit)
       .offset(offset),
     db.select({ total: count() }).from(ledger).where(inRange),
