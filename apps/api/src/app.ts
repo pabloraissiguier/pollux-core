@@ -10,6 +10,7 @@ import { categoryRoutes } from './routes/categories'
 import { customerRoutes } from './routes/customers'
 import { meRoutes } from './routes/me'
 import { orderRoutes } from './routes/orders'
+import { paymentRoutes } from './routes/payments'
 import { productRoutes } from './routes/products'
 import { stockRoutes } from './routes/stock'
 
@@ -52,6 +53,7 @@ export function createApp({ db, verifyToken, corsOrigins }: AppDeps) {
     .route('/products', productRoutes)
     .route('/stock', stockRoutes)
     .route('/orders', orderRoutes)
+    .route('/payments', paymentRoutes)
 
   app.onError(handleError)
   app.notFound(handleNotFound)
