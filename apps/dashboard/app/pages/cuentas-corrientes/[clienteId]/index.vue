@@ -59,10 +59,18 @@ const { data: statement, status, refresh: refreshStatement } = await useAsyncDat
 
 const paying = ref(false)
 
-function onPaymentRecorded() {
+function onBalanceChanged() {
   refreshCurrent()
   refreshStatement()
 }
+
+const { items: entryActions, kind: entryKind, open: entryOpen, saved: onEntrySaved } = await useBalanceEntryActions(customerId, onBalanceChanged)
+
+// The print view prints the range on screen.
+const moreActions = computed(() => [
+  ...entryActions.value,
+  { label: 'Imprimir resumen', icon: 'i-lucide-printer', to: { path: `/cuentas-corrientes/${customerId}/imprimir`, query: { desde: fromDay.value, hasta: toDay.value } } }
+])
 
 const hasRange = computed(() => !!fromDay.value || !!toDay.value)
 </script>
@@ -90,6 +98,17 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
             icon="i-lucide-banknote"
             @click="paying = true"
           />
+          <UDropdownMenu
+            :items="moreActions"
+            :content="{ align: 'end' }"
+          >
+            <UButton
+              icon="i-lucide-ellipsis-vertical"
+              aria-label="Más acciones"
+              color="neutral"
+              variant="ghost"
+            />
+          </UDropdownMenu>
         </template>
       </UDashboardNavbar>
 
@@ -203,7 +222,15 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
         v-if="current"
         v-model:open="paying"
         :customer="current.customer"
-        @recorded="onPaymentRecorded"
+        @recorded="onBalanceChanged"
+      />
+      <BalanceEntryModal
+        v-if="current"
+        v-model:open="entryOpen"
+        :kind="entryKind"
+        :customer="current.customer"
+        :balance="current.balance"
+        @saved="onEntrySaved"
       />
     </template>
   </UDashboardPanel>

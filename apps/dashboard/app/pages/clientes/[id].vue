@@ -34,6 +34,8 @@ const { data: recentPayments, refresh: refreshPayments } = await useAsyncData(
   () => request(c => c.payments.$get({ query: { customerId: id, limit: String(RECENT_PAYMENTS) } }))
 )
 
+const { items: balanceActions, kind: entryKind, open: entryOpen, saved: onEntrySaved } = await useBalanceEntryActions(id, () => refreshBalance())
+
 const paying = ref(false)
 
 // Recording or voiding a Payment moves the Balance and the list.
@@ -119,6 +121,17 @@ function onSaved(saved: Customer) {
                 color="neutral"
                 variant="outline"
               />
+              <UDropdownMenu
+                :items="balanceActions"
+                :content="{ align: 'end' }"
+              >
+                <UButton
+                  icon="i-lucide-ellipsis-vertical"
+                  aria-label="Más acciones"
+                  color="neutral"
+                  variant="outline"
+                />
+              </UDropdownMenu>
             </div>
           </div>
         </UCard>
@@ -320,6 +333,14 @@ function onSaved(saved: Customer) {
           v-model:open="paying"
           :customer="customer"
           @recorded="onPaymentsChanged"
+        />
+        <BalanceEntryModal
+          v-if="balance"
+          v-model:open="entryOpen"
+          :kind="entryKind"
+          :customer="customer"
+          :balance="balance.balance"
+          @saved="onEntrySaved"
         />
         <CustomerEditModal
           v-model:open="editing"

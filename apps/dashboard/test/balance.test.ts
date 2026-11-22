@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { balanceCaption, debitOrCredit, statementAmountText, statementEntryLabel } from '../app/utils/balance'
+import { balanceAdjustmentFormSchema, balanceAfter, balanceAmountText, balanceCaption, debitOrCredit, openingBalanceFormSchema, statementAmountText, statementEntryLabel } from '../app/utils/balance'
 import type { StatementEntryLabelInput } from '../app/utils/balance'
 
 const entry = (overrides: Partial<StatementEntryLabelInput>): StatementEntryLabelInput => ({
@@ -61,5 +61,46 @@ describe('balanceCaption', () => {
     expect(balanceCaption('2969.00')).toBe('Debe')
     expect(balanceCaption('-50.00')).toBe('A favor del cliente')
     expect(balanceCaption('0.00')).toBe('Al día')
+  })
+})
+
+describe('balanceAmountText', () => {
+  it('says a Balance in a list with its side', () => {
+    expect(balanceAmountText('1500.00')).toBe(`Debe $${NBSP}1.500,00`)
+    expect(balanceAmountText('-300.00')).toBe(`A favor $${NBSP}300,00`)
+    expect(balanceAmountText('0.00')).toBe('Al día')
+  })
+})
+
+describe('balanceAfter', () => {
+  it('previews the Balance an entry leaves, from an amount typed the es-AR way', () => {
+    expect(balanceAfter('1500.00', 'credit', '200')).toBe('1300.00')
+    expect(balanceAfter('100.00', 'credit', '1.250,50')).toBe('-1150.50')
+    expect(balanceAfter('0.00', 'debit', '2.500,50')).toBe('2500.50')
+  })
+
+  it('has nothing to show until the amount is valid', () => {
+    expect(balanceAfter('1500.00', 'debit', '')).toBeNull()
+    expect(balanceAfter('1500.00', 'debit', '0')).toBeNull()
+  })
+})
+
+describe('manual entry forms', () => {
+  it('turn the typed amount into a decimal string, keeping the side apart', () => {
+    expect(balanceAdjustmentFormSchema.parse({ side: 'credit', amount: '1.250,50', reason: ' Incobrable ', entryDate: '2026-01-10' }))
+      .toEqual({ side: 'credit', amount: '1250.50', reason: 'Incobrable', entryDate: '2026-01-10' })
+  })
+
+  it('refuse a future day, each with its own message', () => {
+    const future = '2999-01-01'
+    const adjustment = balanceAdjustmentFormSchema.safeParse({ side: 'debit', amount: '10', reason: 'x', entryDate: future })
+    const opening = openingBalanceFormSchema.safeParse({ side: 'debit', amount: '10', entryDate: future })
+    expect(adjustment.error?.issues.map(i => i.message)).toEqual(['La fecha del ajuste no puede ser futura'])
+    expect(opening.error?.issues.map(i => i.message)).toEqual(['La fecha del saldo inicial no puede ser futura'])
+  })
+
+  it('require the adjustment\'s reason', () => {
+    const result = balanceAdjustmentFormSchema.safeParse({ side: 'debit', amount: '10', reason: '  ', entryDate: '2026-01-10' })
+    expect(result.error?.issues.map(i => i.message)).toEqual(['Ingresá el motivo del ajuste'])
   })
 })
