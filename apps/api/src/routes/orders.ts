@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { requireBusiness } from '../auth/session'
 import type { AppEnv } from '../context'
 import { deliverOrder, undoDelivery } from '../services/delivery'
+import { issueDeliveryNote } from '../services/delivery-notes'
 import { cancelOrder, createOrder, getOrder, listOrders, updateOrder } from '../services/orders'
 import { validate } from '../validator'
 
@@ -12,7 +13,8 @@ const orderParam = z.object({ id: z.uuid() })
 /**
  * Orders (Pedidos): taken in the field or by phone through the same flow, edited while Pending,
  * cancelled, delivered (and undone), and listed for the reparto. Create and edit answer with the Order plus `warnings`
- * for lines that leave Available stock negative.
+ * for lines that leave Available stock negative. `POST /:id/delivery-note` issues the Order's
+ * Delivery note (Remito), or answers with it again on a reprint.
  */
 export const orderRoutes = new Hono<AppEnv>()
   .use(requireBusiness)
@@ -39,4 +41,7 @@ export const orderRoutes = new Hono<AppEnv>()
   .post('/:id/undo-delivery', validate('param', orderParam), async (c) => {
     const { db, businessId, profileId } = c.var
     return c.json(await undoDelivery(db, businessId, profileId, c.req.valid('param').id), 200)
+  })
+  .post('/:id/delivery-note', validate('param', orderParam), async (c) => {
+    return c.json(await issueDeliveryNote(c.var.db, c.var.businessId, c.req.valid('param').id), 200)
   })
