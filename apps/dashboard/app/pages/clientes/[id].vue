@@ -16,7 +16,7 @@ useSeoMeta({ title: () => customer.value?.name ?? 'Cliente' })
 const RECENT_ORDERS = 5
 
 // Same key and shape as the Statement page, so going there shows the Balance straight away.
-const { data: balance } = await useAsyncData(
+const { data: balance, refresh: refreshBalance } = await useAsyncData(
   `cliente-${id}-saldo`,
   () => request(c => c.customers[':id'].balance.$get({ param: { id } }))
 )
@@ -25,6 +25,22 @@ const { data: recentOrders } = await useAsyncData(
   `cliente-${id}-pedidos`,
   () => request(c => c.orders.$get({ query: { customerId: id, limit: String(RECENT_ORDERS) } }))
 )
+
+/** How many Payments the page shows; all of them are on the Statement. */
+const RECENT_PAYMENTS = 5
+
+const { data: recentPayments, refresh: refreshPayments } = await useAsyncData(
+  `cliente-${id}-pagos`,
+  () => request(c => c.payments.$get({ query: { customerId: id, limit: String(RECENT_PAYMENTS) } }))
+)
+
+const paying = ref(false)
+
+// Recording or voiding a Payment moves the Balance and the list.
+function onPaymentsChanged() {
+  refreshBalance()
+  refreshPayments()
+}
 
 const editing = ref(false)
 const branchOpen = ref(false)
@@ -90,13 +106,20 @@ function onSaved(saved: Customer) {
               v-else
               class="h-20 w-40"
             />
-            <UButton
-              :to="`/cuentas-corrientes/${customer.id}`"
-              label="Ver resumen de cuenta"
-              icon="i-lucide-receipt-text"
-              color="neutral"
-              variant="outline"
-            />
+            <div class="flex flex-wrap gap-2">
+              <UButton
+                label="Registrar pago"
+                icon="i-lucide-banknote"
+                @click="paying = true"
+              />
+              <UButton
+                :to="`/cuentas-corrientes/${customer.id}`"
+                label="Ver resumen de cuenta"
+                icon="i-lucide-receipt-text"
+                color="neutral"
+                variant="outline"
+              />
+            </div>
           </div>
         </UCard>
 
@@ -155,6 +178,33 @@ function onSaved(saved: Customer) {
               </span>
             </ULink>
           </UPageList>
+        </UCard>
+
+        <UCard
+          as="section"
+          aria-labelledby="cliente-pagos-recientes"
+        >
+          <template #header>
+            <h2
+              id="cliente-pagos-recientes"
+              class="font-semibold text-highlighted"
+            >
+              Pagos recientes
+            </h2>
+          </template>
+
+          <p
+            v-if="!recentPayments?.items.length"
+            class="text-muted"
+          >
+            Todavía no tiene pagos.
+          </p>
+          <PaymentList
+            v-else
+            :payments="recentPayments.items"
+            show-order
+            @voided="onPaymentsChanged"
+          />
         </UCard>
 
         <UCard>
@@ -266,6 +316,11 @@ function onSaved(saved: Customer) {
           </UPageList>
         </UCard>
 
+        <PaymentSheet
+          v-model:open="paying"
+          :customer="customer"
+          @recorded="onPaymentsChanged"
+        />
         <CustomerEditModal
           v-model:open="editing"
           :customer="customer"

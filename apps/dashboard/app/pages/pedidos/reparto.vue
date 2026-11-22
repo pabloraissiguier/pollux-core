@@ -166,7 +166,7 @@ const ordersLabel = (count: number) => (count === 1 ? '1 pedido' : `${count} ped
         </UCard>
       </div>
 
-      <OrderDeliverSheet
+      <PaymentSheet
         v-if="deliveringOrder"
         v-model:open="sheetOpen"
         :order="deliveringOrder"

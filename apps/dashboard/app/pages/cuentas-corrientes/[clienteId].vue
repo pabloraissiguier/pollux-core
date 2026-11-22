@@ -34,14 +34,14 @@ watch([fromDay, toDay, page], ([desde, hasta, pagina]) => {
 // The dates are `yyyy-mm-dd` strings, so they compare as text. A backwards range asks nothing.
 const backwardsRange = computed(() => !!fromDay.value && !!toDay.value && fromDay.value > toDay.value)
 
-const { data: current } = await useAsyncData(
+const { data: current, refresh: refreshCurrent } = await useAsyncData(
   `cliente-${customerId}-saldo`,
   () => request(c => c.customers[':id'].balance.$get({ param: { id: customerId } }))
 )
 
 useSeoMeta({ title: () => (current.value ? `Resumen de cuenta · ${current.value.customer.name}` : 'Resumen de cuenta') })
 
-const { data: statement, status } = await useAsyncData(
+const { data: statement, status, refresh: refreshStatement } = await useAsyncData(
   `resumen-${customerId}`,
   () => backwardsRange.value
     ? Promise.resolve<Statement>({ items: [], total: 0 })
@@ -57,6 +57,13 @@ const { data: statement, status } = await useAsyncData(
   { watch: [fromDay, toDay, page] }
 )
 
+const paying = ref(false)
+
+function onPaymentRecorded() {
+  refreshCurrent()
+  refreshStatement()
+}
+
 const hasRange = computed(() => !!fromDay.value || !!toDay.value)
 </script>
 
@@ -71,6 +78,17 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
             aria-label="Volver al cliente"
             color="neutral"
             variant="ghost"
+          />
+        </template>
+
+        <template
+          v-if="current"
+          #right
+        >
+          <UButton
+            label="Registrar pago"
+            icon="i-lucide-banknote"
+            @click="paying = true"
           />
         </template>
       </UDashboardNavbar>
@@ -180,6 +198,13 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
           />
         </template>
       </div>
+
+      <PaymentSheet
+        v-if="current"
+        v-model:open="paying"
+        :customer="current.customer"
+        @recorded="onPaymentRecorded"
+      />
     </template>
   </UDashboardPanel>
 </template>
