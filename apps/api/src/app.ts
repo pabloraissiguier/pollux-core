@@ -6,6 +6,7 @@ import type { AuthVerifier } from './auth/verifier'
 import type { AppEnv } from './context'
 import type { Database } from './db'
 import { handleError, handleNotFound } from './errors'
+import { businessRoutes } from './routes/business'
 import { categoryRoutes } from './routes/categories'
 import { customerRoutes } from './routes/customers'
 import { meRoutes } from './routes/me'
@@ -50,6 +51,7 @@ export function createApp({ db, verifyToken, corsOrigins }: AppDeps) {
     })
     .use(session(verifyToken))
     .route('/me', meRoutes)
+    .route('/business', businessRoutes)
     .route('/customers', customerRoutes)
     .route('/categories', categoryRoutes)
     .route('/products', productRoutes)

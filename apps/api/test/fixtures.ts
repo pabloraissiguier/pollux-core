@@ -29,7 +29,7 @@ export function setupTestApp({ corsOrigins = ['http://localhost:3010'] }: { cors
 
   /**
    * A business with the given users as owners. `details` sets the business's own data (address,
-   * VAT condition, ...), which has no edit endpoint yet.
+   * VAT condition, ...) without going through `PATCH /business`.
    */
   async function createBusiness(name: string, ownerIds: string[], details: BusinessDetails = {}): Promise<string> {
     const [business] = await db.insert(businesses).values({ ...details, name }).returning({ id: businesses.id })
