@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { PAYMENT_METHODS } from '@pollux/contracts'
-import type { FormError, FormSubmitEvent } from '@nuxt/ui'
+import type { FormError } from '@nuxt/ui'
 import { statementPaymentLabels } from '~/utils/balance'
 import type { CustomerOption } from '~/utils/customers'
 import type { Order } from '~/utils/orders'
@@ -21,8 +21,6 @@ const props = defineProps<{
 }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ delivered: [order: Order], recorded: [payment: Payment] }>()
-
-const { request } = useApi()
 
 const isDelivery = computed(() => !!props.order)
 const schema = computed(() => paymentFormSchema(isDelivery.value))
@@ -46,7 +44,6 @@ const state = reactive<{ choice: PaymentChoice, amount: string, reference: strin
   reference: '',
   day: todayInArgentina()
 })
-const sending = ref(false)
 /** What happened, once it did: switches the sheet to its success state. */
 const done = ref<{ payment: { method: Payment['method'], amount: string } | null } | null>(null)
 /** The Customer's Balance right after, once read. */
@@ -66,39 +63,32 @@ watch(open, (isOpen) => {
   newBalance.value = null
 })
 
-async function onSubmit({ data }: FormSubmitEvent<PaymentFormOutput>) {
-  // A second tap while the first is in flight would deliver or pay twice.
-  if (sending.value || !customer.value) return
+// A second tap while the first is in flight would deliver or pay twice. Validation errors come
+// back as a toast (no form given): the API names the fields its own way (`payment.amount`).
+const { saving: sending, onSubmit } = useFormSubmit<PaymentFormOutput>(null, async (data, request) => {
+  if (!customer.value) return
   const payer = customer.value
-  sending.value = true
+  if (props.order) {
+    const order = await request(c => c.orders[':id'].deliver.$post({
+      param: { id: props.order!.id },
+      json: { deliveredOn: data.day, payment: data.payment ?? undefined }
+    }))
+    emit('delivered', order)
+  } else {
+    const payment = data.payment!
+    emit('recorded', await request(c => c.payments.$post({
+      json: { customerId: payer.id, paidOn: data.day, ...payment }
+    })))
+  }
+  done.value = { payment: data.payment }
+  // It already happened: a failed Balance read only leaves the figure out.
   try {
-    // Validation errors come back as a toast: the API names the fields its own way (`payment.amount`).
-    if (props.order) {
-      const order = await request(c => c.orders[':id'].deliver.$post({
-        param: { id: props.order!.id },
-        json: { deliveredOn: data.day, payment: data.payment ?? undefined }
-      }))
-      emit('delivered', order)
-    } else {
-      const payment = data.payment!
-      emit('recorded', await request(c => c.payments.$post({
-        json: { customerId: payer.id, paidOn: data.day, ...payment }
-      })))
-    }
-    done.value = { payment: data.payment }
-    // It already happened: a failed Balance read only leaves the figure out.
-    try {
-      const { balance } = await request(c => c.customers[':id'].balance.$get({ param: { id: payer.id } }))
-      newBalance.value = balance
-    } catch (error) {
-      if (!(error instanceof ApiRequestError)) throw error
-    }
+    const { balance } = await request(c => c.customers[':id'].balance.$get({ param: { id: payer.id } }))
+    newBalance.value = balance
   } catch (error) {
     if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    sending.value = false
   }
-}
+})
 </script>
 
 <template>

@@ -1,63 +1,43 @@
 <script setup lang="ts">
 import { ORDER_STATUSES } from '@pollux/contracts'
-import type { OrderStatus } from '@pollux/contracts'
 import type { CustomerOption } from '~/utils/customers'
 
 useSeoMeta({ title: 'Pedidos' })
 
-const PAGE_SIZE = 50
-
-const route = useRoute()
-const router = useRouter()
 const { request } = useApi()
 
-const queryText = (value: unknown) => (typeof value === 'string' ? value : '')
-const isStatus = (value: string): value is OrderStatus => (ORDER_STATUSES as readonly string[]).includes(value)
-
 // The filters live in the URL, so coming back from an Order keeps them.
-const initialStatus = queryText(route.query.estado)
-const status = ref<OrderStatus | undefined>(isStatus(initialStatus) ? initialStatus : undefined)
-const deliveryDate = ref(queryText(route.query.fecha))
-const town = ref(queryText(route.query.localidad) || undefined)
+const { filters, values, page, pageSize, paging, sources } = useListQuery({
+  filters: {
+    status: enumParam('estado', ORDER_STATUSES),
+    deliveryDate: dayParam('fecha'),
+    town: textParam('localidad'),
+    customerId: textParam('cliente')
+  }
+})
+const { status, deliveryDate, town } = filters
 const customer = ref<CustomerOption | undefined>()
-const page = ref(Number(route.query.pagina) || 1)
 
-// A Customer in the URL is shown by name, so it's read once.
-const customerIdInUrl = queryText(route.query.cliente)
-if (customerIdInUrl) {
+// A Customer in the URL is shown by name, so it's read once. One that can't be read is dropped.
+if (filters.customerId.value) {
+  const id = filters.customerId.value
   try {
-    customer.value = await request(c => c.customers[':id'].$get({ param: { id: customerIdInUrl } }))
+    customer.value = await request(c => c.customers[':id'].$get({ param: { id } }))
   } catch (error) {
     if (!(error instanceof ApiRequestError)) throw error
   }
 }
+filters.customerId.value = customer.value?.id
+watch(customer, (picked) => {
+  filters.customerId.value = picked?.id
+})
 
 const statusItems = ORDER_STATUSES.map(value => ({ value, label: orderStatusLabels[value] }))
 
-// A valid day or none: a date input is empty while a date is half typed.
-const searchedDate = computed(() => (/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate.value) ? deliveryDate.value : undefined))
-const customerId = computed(() => customer.value?.id)
-
-watch([status, searchedDate, town, customerId], () => {
-  page.value = 1
-})
-watch([status, searchedDate, town, customerId, page], ([estado, fecha, localidad, cliente, pagina]) => {
-  router.replace({ query: { estado, fecha, localidad, cliente, pagina: pagina > 1 ? pagina : undefined } })
-})
-
 const { data: orders, status: listStatus } = await useAsyncData(
   'pedidos',
-  () => request(c => c.orders.$get({
-    query: {
-      status: status.value,
-      deliveryDate: searchedDate.value,
-      town: town.value,
-      customerId: customerId.value,
-      limit: String(PAGE_SIZE),
-      offset: String((page.value - 1) * PAGE_SIZE)
-    }
-  })),
-  { watch: [status, searchedDate, town, customerId, page] }
+  () => request(c => c.orders.$get({ query: { ...values.value, ...paging.value } })),
+  { watch: sources }
 )
 
 const { data: towns } = await useAsyncData(
@@ -66,7 +46,7 @@ const { data: towns } = await useAsyncData(
   { default: () => [] }
 )
 
-const hasFilters = computed(() => !!(status.value || searchedDate.value || town.value || customerId.value))
+const hasFilters = computed(() => Object.values(values.value).some(Boolean))
 </script>
 
 <template>
@@ -184,10 +164,10 @@ const hasFilters = computed(() => !!(status.value || searchedDate.value || town.
         </UPageList>
 
         <UPagination
-          v-if="orders.total > PAGE_SIZE"
+          v-if="orders.total > pageSize"
           v-model:page="page"
           :total="orders.total"
-          :items-per-page="PAGE_SIZE"
+          :items-per-page="pageSize"
           class="self-center"
         />
       </template>

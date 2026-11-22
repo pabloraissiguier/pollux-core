@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { customerUpdateSchema } from '@pollux/contracts'
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import type { Customer } from '~/utils/customers'
 
@@ -9,7 +8,6 @@ const props = defineProps<{ customer: Customer }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [customer: Customer] }>()
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 const state = reactive(customerFormState(props.customer))
 
@@ -18,18 +16,10 @@ watch(open, (isOpen) => {
   if (isOpen) Object.assign(state, customerFormState(props.customer))
 })
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof customerUpdateSchema>>) {
-  try {
-    const customer = await request(
-      c => c.customers[':id'].$patch({ param: { id: props.customer.id }, json: data }),
-      { form: form.value }
-    )
-    emit('saved', customer)
-    open.value = false
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  }
-}
+const { saving, onSubmit } = useFormSubmit<z.output<typeof customerUpdateSchema>>(form, async (data, request) => {
+  emit('saved', await request(c => c.customers[':id'].$patch({ param: { id: props.customer.id }, json: data })))
+  open.value = false
+})
 </script>
 
 <template>
@@ -55,6 +45,7 @@ async function onSubmit({ data }: FormSubmitEvent<z.output<typeof customerUpdate
           label="Guardar cambios"
           icon="i-lucide-check"
           block
+          :loading="saving"
         />
       </UForm>
     </template>

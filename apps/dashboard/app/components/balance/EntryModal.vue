@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Money } from '@pollux/contracts'
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { balanceAdjustmentFormSchema, balanceAfter, manualEntryFormState, openingBalanceFormSchema, signedBalanceAmount } from '~/utils/balance'
 import type { BalanceEntryKind, BalanceSide } from '~/utils/balance'
@@ -19,14 +18,12 @@ const props = defineProps<{
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [balance: Money | null] }>()
 
-const { request } = useApi()
 const toast = useToast()
 const form = useTemplateRef('form')
 
 const isOpening = computed(() => props.kind === 'opening')
 const schema = computed(() => (isOpening.value ? openingBalanceFormSchema : balanceAdjustmentFormSchema))
 const state = reactive(manualEntryFormState('debit'))
-const saving = ref(false)
 
 const sideItems = computed<{ value: BalanceSide, label: string, description: string }[]>(() => isOpening.value
   ? [
@@ -47,10 +44,8 @@ const resulting = computed(() => balanceAfter(props.balance, state.side, state.a
 
 type FormOutput = z.output<typeof balanceAdjustmentFormSchema> | z.output<typeof openingBalanceFormSchema>
 
-async function onSubmit({ data }: FormSubmitEvent<FormOutput>) {
-  // A second tap in flight would record the entry twice.
-  if (saving.value) return
-  saving.value = true
+// A second tap in flight would record the entry twice.
+const { saving, onSubmit } = useFormSubmit<FormOutput>(form, async (data, request) => {
   const amount = signedBalanceAmount(data.side, data.amount)
   const param = { id: props.customer.id }
   try {
@@ -58,29 +53,27 @@ async function onSubmit({ data }: FormSubmitEvent<FormOutput>) {
       ? await request(c => c.customers[':id']['balance-adjustments'].$post({
           param,
           json: { amount, reason: data.reason, entryDate: data.entryDate }
-        }), { form: form.value })
+        }))
       : await request(c => c.customers[':id']['opening-balance'].$post({
           param,
           json: { amount, entryDate: data.entryDate }
-        }), { form: form.value })
+        }))
     emit('saved', saved.balance)
-    open.value = false
-    toast.add({
-      title: isOpening.value ? 'Saldo inicial cargado' : 'Saldo ajustado',
-      color: 'success',
-      icon: 'i-lucide-check'
-    })
   } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
     // Someone else loaded it first: the option goes away (the toast already says why).
-    if (error.code === 'opening_balance_exists') {
+    if (error instanceof ApiRequestError && error.code === 'opening_balance_exists') {
       emit('saved', null)
       open.value = false
     }
-  } finally {
-    saving.value = false
+    throw error
   }
-}
+  open.value = false
+  toast.add({
+    title: isOpening.value ? 'Saldo inicial cargado' : 'Saldo ajustado',
+    color: 'success',
+    icon: 'i-lucide-check'
+  })
+})
 </script>
 
 <template>

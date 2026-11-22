@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { paymentVoidSchema } from '@pollux/contracts'
 import type { Payment } from '~/utils/payments'
@@ -12,31 +11,17 @@ const props = defineProps<{ payment: Payment }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ voided: [payment: Payment] }>()
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 const state = reactive({ reason: '' })
-const voiding = ref(false)
 
 watch(open, (isOpen) => {
   if (isOpen) state.reason = ''
 })
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof paymentVoidSchema>>) {
-  if (voiding.value) return
-  voiding.value = true
-  try {
-    const payment = await request(
-      c => c.payments[':id'].void.$post({ param: { id: props.payment.id }, json: data }),
-      { form: form.value }
-    )
-    emit('voided', payment)
-    open.value = false
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    voiding.value = false
-  }
-}
+const { saving: voiding, onSubmit } = useFormSubmit<z.output<typeof paymentVoidSchema>>(form, async (data, request) => {
+  emit('voided', await request(c => c.payments[':id'].void.$post({ param: { id: props.payment.id }, json: data })))
+  open.value = false
+})
 </script>
 
 <template>

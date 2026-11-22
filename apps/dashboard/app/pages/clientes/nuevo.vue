@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { customerCreateSchema } from '@pollux/contracts'
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 
 useSeoMeta({ title: 'Nuevo cliente' })
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 
 // A name and one Branch are enough; everything else can wait for the Customer's page.
@@ -15,14 +13,10 @@ const state = reactive({
 })
 const branch = state.branches[0]!
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof customerCreateSchema>>) {
-  try {
-    const customer = await request(c => c.customers.$post({ json: data }), { form: form.value })
-    await navigateTo(`/clientes/${customer.id}`, { replace: true })
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  }
-}
+const { saving, onSubmit } = useFormSubmit<z.output<typeof customerCreateSchema>>(form, async (data, request) => {
+  const customer = await request(c => c.customers.$post({ json: data }))
+  await navigateTo(`/clientes/${customer.id}`, { replace: true })
+})
 </script>
 
 <template>
@@ -82,6 +76,7 @@ async function onSubmit({ data }: FormSubmitEvent<z.output<typeof customerCreate
           label="Guardar cliente"
           icon="i-lucide-check"
           block
+          :loading="saving"
         />
       </UForm>
     </template>

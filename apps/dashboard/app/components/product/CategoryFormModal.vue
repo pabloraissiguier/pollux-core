@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { categorySchema } from '@pollux/contracts'
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import type { Category } from '~/utils/products'
 
@@ -9,29 +8,20 @@ const props = defineProps<{ category?: Category | null }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [category: Category] }>()
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 const state = reactive({ name: '' })
-const saving = ref(false)
 
 watch(open, (isOpen) => {
   if (isOpen) state.name = props.category?.name ?? ''
 })
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof categorySchema>>) {
-  saving.value = true
-  try {
-    const category = props.category
-      ? await request(c => c.categories[':id'].$patch({ param: { id: props.category!.id }, json: data }), { form: form.value })
-      : await request(c => c.categories.$post({ json: data }), { form: form.value })
-    emit('saved', category)
-    open.value = false
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    saving.value = false
-  }
-}
+const { saving, onSubmit } = useFormSubmit<z.output<typeof categorySchema>>(form, async (data, request) => {
+  const category = props.category
+    ? await request(c => c.categories[':id'].$patch({ param: { id: props.category!.id }, json: data }))
+    : await request(c => c.categories.$post({ json: data }))
+  emit('saved', category)
+  open.value = false
+})
 </script>
 
 <template>

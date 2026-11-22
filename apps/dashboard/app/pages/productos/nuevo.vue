@@ -1,27 +1,17 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { productCreateFormSchema } from '~/utils/products'
 
 useSeoMeta({ title: 'Nuevo producto' })
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 
 const state = ref(productFormState())
-const saving = ref(false)
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof productCreateFormSchema>>) {
-  saving.value = true
-  try {
-    const product = await request(c => c.products.$post({ json: data }), { form: form.value })
-    await navigateTo(`/productos/${product.id}`, { replace: true })
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    saving.value = false
-  }
-}
+const { saving, onSubmit } = useFormSubmit<z.output<typeof productCreateFormSchema>>(form, async (data, request) => {
+  const product = await request(c => c.products.$post({ json: data }))
+  await navigateTo(`/productos/${product.id}`, { replace: true })
+})
 </script>
 
 <template>

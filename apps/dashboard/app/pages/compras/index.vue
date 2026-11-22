@@ -3,57 +3,33 @@ import type { Purchase } from '~/utils/purchases'
 
 useSeoMeta({ title: 'Compras' })
 
-const PAGE_SIZE = 50
-
-const route = useRoute()
-const router = useRouter()
 const { request } = useApi()
 const { data: suppliers } = await useSuppliers()
 
-const queryText = (value: unknown) => (typeof value === 'string' ? value : '')
-
 // The filters live in the URL, so coming back from a Purchase keeps them.
-const supplierId = ref<string | null>(queryText(route.query.proveedor) || null)
-const from = ref(queryText(route.query.desde))
-const to = ref(queryText(route.query.hasta))
-const page = ref(Number(route.query.pagina) || 1)
-
-watch([supplierId, from, to], () => {
-  page.value = 1
-})
-watch([supplierId, from, to, page], ([proveedor, desde, hasta, pagina]) => {
-  router.replace({
-    query: {
-      proveedor: proveedor || undefined,
-      desde: desde || undefined,
-      hasta: hasta || undefined,
-      pagina: pagina > 1 ? pagina : undefined
-    }
-  })
+const { filters: { supplierId, from, to }, values, page, pageSize, paging, sources } = useListQuery({
+  filters: { supplierId: textParam('proveedor', null), from: dayParam('desde'), to: dayParam('hasta') }
 })
 
 // The dates are `yyyy-mm-dd` strings, so they compare as text. A backwards range asks nothing.
-const backwardsRange = computed(() => !!from.value && !!to.value && from.value > to.value)
+const backwardsRange = computed(() => {
+  const { from, to } = values.value
+  return !!from && !!to && from > to
+})
 
 const { data: purchases, status } = await useAsyncData(
   'compras',
   () => backwardsRange.value
     ? Promise.resolve({ items: [] as Purchase[], total: 0 })
     : request(c => c.purchases.$get({
-        query: {
-          supplierId: supplierId.value || undefined,
-          from: from.value || undefined,
-          to: to.value || undefined,
-          limit: String(PAGE_SIZE),
-          offset: String((page.value - 1) * PAGE_SIZE)
-        }
+        query: { supplierId: values.value.supplierId, from: values.value.from, to: values.value.to, ...paging.value }
       })),
-  { watch: [supplierId, from, to, page] }
+  { watch: sources }
 )
 
 // "Todos los proveedores" is a choice of its own: easier to hit on a phone than a clear button.
 const supplierItems = computed(() => [{ id: null, name: 'Todos los proveedores' }, ...suppliers.value])
-const hasFilters = computed(() => !!supplierId.value || !!from.value || !!to.value)
+const hasFilters = computed(() => Object.values(values.value).some(Boolean))
 
 function purchaseSubtitle(purchase: Purchase) {
   const lines = purchase.lines.length === 1 ? '1 producto' : `${formatUnits(purchase.lines.length)} productos`
@@ -185,10 +161,10 @@ function purchaseSubtitle(purchase: Purchase) {
         </UPageList>
 
         <UPagination
-          v-if="purchases.total > PAGE_SIZE"
+          v-if="purchases.total > pageSize"
           v-model:page="page"
           :total="purchases.total"
-          :items-per-page="PAGE_SIZE"
+          :items-per-page="pageSize"
           class="self-center"
         />
       </template>

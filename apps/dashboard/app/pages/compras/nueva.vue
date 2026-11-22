@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
+import type { FormErrorEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import type { Product } from '~/utils/products'
 import { purchaseFormSchema, purchaseFormTotal, purchaseLineSubtotal } from '~/utils/purchases'
@@ -16,7 +16,6 @@ const form = useTemplateRef('form')
 
 const state = reactive(purchaseFormState())
 const total = computed(() => purchaseFormTotal(state.lines))
-const saving = ref(false)
 
 // Product search: the API searches name, Code and Brand. Inactive Products may be bought too.
 const productSearch = ref('')
@@ -75,24 +74,16 @@ function removeLine(index: number) {
 }
 
 // Two taps (or Enter while saving) must not register the Purchase twice.
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof purchaseFormSchema>>) {
-  if (saving.value) return
-  saving.value = true
-  try {
-    const purchase = await request(c => c.purchases.$post({ json: data }), { form: form.value })
-    toast.add({
-      title: 'Compra registrada',
-      description: `${purchase.supplier.name} · ${formatMoney(purchase.total)}`,
-      color: 'success',
-      icon: 'i-lucide-check'
-    })
-    await navigateTo(`/compras/${purchase.id}`, { replace: true })
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    saving.value = false
-  }
-}
+const { saving, onSubmit } = useFormSubmit<z.output<typeof purchaseFormSchema>>(form, async (data, request) => {
+  const purchase = await request(c => c.purchases.$post({ json: data }))
+  toast.add({
+    title: 'Compra registrada',
+    description: `${purchase.supplier.name} · ${formatMoney(purchase.total)}`,
+    color: 'success',
+    icon: 'i-lucide-check'
+  })
+  await navigateTo(`/compras/${purchase.id}`, { replace: true })
+})
 
 function onError(event: FormErrorEvent) {
   const id = event.errors[0]?.id

@@ -7,23 +7,13 @@ import { balanceAmountText, debitOrCredit } from '~/utils/balance'
  */
 useSeoMeta({ title: 'Cuentas corrientes' })
 
-const PAGE_SIZE = 50
-
-const route = useRoute()
-const router = useRouter()
 const { request } = useApi()
-
-const page = ref(Number(route.query.pagina) || 1)
-watch(page, (pagina) => {
-  router.replace({ query: { pagina: pagina > 1 ? pagina : undefined } })
-})
+const { page, pageSize, paging, sources } = useListQuery()
 
 const { data: balances, status, refresh } = await useAsyncData(
   'cuentas-corrientes',
-  () => request(c => c.customers['with-balance'].$get({
-    query: { limit: String(PAGE_SIZE), offset: String((page.value - 1) * PAGE_SIZE) }
-  })),
-  { watch: [page] }
+  () => request(c => c.customers['with-balance'].$get({ query: paging.value })),
+  { watch: sources }
 )
 
 // Registrar pago straight from a row: the Customer is the row's, so the sheet needs no picker.
@@ -111,10 +101,10 @@ async function pay(customer: { id: string, name: string }) {
           </UCard>
 
           <UPagination
-            v-if="balances.total > PAGE_SIZE"
+            v-if="balances.total > pageSize"
             v-model:page="page"
             :total="balances.total"
-            :items-per-page="PAGE_SIZE"
+            :items-per-page="pageSize"
             class="self-center"
           />
         </template>
