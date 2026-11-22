@@ -74,8 +74,8 @@ function removeLine(index: number) {
 }
 
 // Two taps (or Enter while saving) must not register the Purchase twice.
-const { saving, onSubmit } = useFormSubmit<z.output<typeof purchaseFormSchema>>(form, async (data, request) => {
-  const purchase = await request(c => c.purchases.$post({ json: data }))
+const { saving, onSubmit } = useFormSubmit<z.output<typeof purchaseFormSchema>>(form, async (data, formRequest) => {
+  const purchase = await formRequest(c => c.purchases.$post({ json: data }))
   toast.add({
     title: 'Compra registrada',
     description: `${purchase.supplier.name} · ${formatMoney(purchase.total)}`,

@@ -13,7 +13,7 @@ const customerId = String(route.params.clienteId)
 const { filters: { from, to }, values, page, pageSize, paging, sources } = useListQuery({
   filters: { from: dayParam('desde'), to: dayParam('hasta') }
 })
-// A valid day or none: a date input is empty while a date is half typed.
+// The range as sent: a whole day or none (`dayParam`).
 const fromDay = computed(() => values.value.from)
 const toDay = computed(() => values.value.to)
 

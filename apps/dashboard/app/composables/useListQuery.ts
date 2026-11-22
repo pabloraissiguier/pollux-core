@@ -14,6 +14,7 @@ type ParamWritten<P> = P extends UrlParam<unknown, infer W> ? W : never
 type Params = Record<string, UrlParam<any, string>> // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const SEARCH_DELAY_MS = 300
+const PAGE_SIZE = 50
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 const queryText = (raw: unknown) => (typeof raw === 'string' ? raw : '')
@@ -59,11 +60,10 @@ export function enumParam<T extends string>(key: string, values: readonly T[]): 
 export function useListQuery<F extends Params = Record<never, never>>(options: {
   search?: string
   filters?: F
-  pageSize?: number
 } = {}) {
   const route = useRoute()
   const router = useRouter()
-  const pageSize = options.pageSize ?? 50
+  const pageSize = PAGE_SIZE
   const params = Object.entries(options.filters ?? {}) as [keyof F & string, UrlParam<unknown>][]
 
   const filters = Object.fromEntries(params.map(([name, param]) => [name, ref(param.read(route.query[param.key]))])) as

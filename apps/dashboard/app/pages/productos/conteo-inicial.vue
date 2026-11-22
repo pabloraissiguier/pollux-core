@@ -53,10 +53,10 @@ watch(shown, async () => {
 })
 const typed = computed(() => typedCountTotal(state.counts))
 
-const { saving, onSubmit } = useFormSubmit<z.output<typeof initialCountFormSchema>>(form, async (items, formRequest) => {
+// No form for API errors: the API names the counts `items.0.quantity`, so they go to a toast.
+const { saving, onSubmit } = useFormSubmit<z.output<typeof initialCountFormSchema>>(null, async (items, formRequest) => {
   if (!items.length) return
-  // The API names the counts `items.0.quantity`, unlike the form's fields: its errors go to a toast.
-  const result = await formRequest(c => c.stock['initial-count'].$post({ json: { items } }), { form: null })
+  const result = await formRequest(c => c.stock['initial-count'].$post({ json: { items } }))
   const saved = new Map(result.items.map(item => [item.product.id, item.product]))
   products.value = products.value?.map(product => saved.get(product.id) ?? product)
   state.counts = {}

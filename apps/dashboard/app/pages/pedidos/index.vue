@@ -36,7 +36,13 @@ const statusItems = ORDER_STATUSES.map(value => ({ value, label: orderStatusLabe
 
 const { data: orders, status: listStatus } = await useAsyncData(
   'pedidos',
-  () => request(c => c.orders.$get({ query: { ...values.value, ...paging.value } })),
+  () => request(c => c.orders.$get({ query: {
+    status: values.value.status,
+    deliveryDate: values.value.deliveryDate,
+    town: values.value.town,
+    customerId: values.value.customerId,
+    ...paging.value
+  } })),
   { watch: sources }
 )
 
