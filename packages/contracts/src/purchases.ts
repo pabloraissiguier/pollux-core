@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { moneySchema } from './money'
-import { daySchema } from './orders'
+import { daySchema, pastDaySchema } from './day'
 import { paginationSchema } from './pagination'
 
 /** Optional free text: trimmed, and an empty string means "none" (stored as null). */
@@ -27,12 +27,13 @@ export type PurchaseLineInput = z.input<typeof purchaseLineSchema>
 
 /**
  * Compra: Products received from a Supplier. Registering it raises each Product's On-hand stock
- * by the line quantities. `purchasedOn` defaults to today (America/Argentina/Cordoba).
+ * by the line quantities. `purchasedOn` defaults to today (America/Argentina/Cordoba) and may
+ * not be later: a Purchase is entered when the goods arrive.
  * Purchases can't be edited or deleted.
  */
 export const purchaseCreateSchema = z.object({
   supplierId: z.uuid({ message: 'Elegí un proveedor válido' }),
-  purchasedOn: daySchema.optional(),
+  purchasedOn: pastDaySchema('La fecha de compra no puede ser futura').optional(),
   invoiceNumber: optionalText(50),
   notes: optionalText(1000),
   lines: z.array(purchaseLineSchema).min(1, 'Agregá al menos un producto').max(500),

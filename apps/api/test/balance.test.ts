@@ -24,6 +24,9 @@ async function createCustomer(name: string) {
   return (await res.json()) as { id: string, name: string }
 }
 
+const tomorrow = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Cordoba' })
+  .format(new Date(Date.now() + 24 * 60 * 60 * 1000))
+
 async function balanceOf(customerId: string): Promise<string> {
   const res = await api(`/customers/${customerId}/balance`)
   expect(res.status).toBe(200)
@@ -94,6 +97,18 @@ describe('Opening balance', () => {
     expect(await balanceOf(customer.id)).toBe('0.00')
   })
 
+  it('refuses a date later than today in Córdoba', async () => {
+    const customer = await createCustomer('Saldo a futuro')
+
+    const res = await post(`/customers/${customer.id}/opening-balance`, { amount: '100.00', entryDate: tomorrow() })
+
+    expect(res.status).toBe(400)
+    const { error } = await res.json()
+    expect(error.code).toBe('validation_error')
+    expect(error.details.entryDate).toEqual(['La fecha del saldo inicial no puede ser futura'])
+    expect(await balanceOf(customer.id)).toBe('0.00')
+  })
+
   it('is refused for a Customer of another business', async () => {
     const other = await t.createOwnedBusiness('Otro negocio')
     const theirs = await t.request('/customers', {
@@ -153,6 +168,18 @@ describe('Balance adjustment', () => {
     expect((await blankReason.json()).error.details).toHaveProperty('reason')
     expect(zero.status).toBe(400)
     expect((await zero.json()).error.details).toHaveProperty('amount')
+    expect(await balanceOf(customer.id)).toBe('0.00')
+  })
+
+  it('refuses a date later than today in Córdoba', async () => {
+    const customer = await createCustomer('Ajuste a futuro')
+
+    const res = await post(`/customers/${customer.id}/balance-adjustments`, { amount: '-100.00', reason: 'Descuento', entryDate: tomorrow() })
+
+    expect(res.status).toBe(400)
+    const { error } = await res.json()
+    expect(error.code).toBe('validation_error')
+    expect(error.details.entryDate).toEqual(['La fecha del ajuste no puede ser futura'])
     expect(await balanceOf(customer.id)).toBe('0.00')
   })
 })
