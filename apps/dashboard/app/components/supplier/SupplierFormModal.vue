@@ -23,6 +23,7 @@ watch(open, (isOpen) => {
 })
 
 async function onSubmit({ data }: FormSubmitEvent<z.output<typeof supplierCreateSchema>>) {
+  if (saving.value) return
   saving.value = true
   try {
     const supplier = props.supplier

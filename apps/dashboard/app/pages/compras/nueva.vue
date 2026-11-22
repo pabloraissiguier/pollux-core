@@ -74,7 +74,9 @@ function removeLine(index: number) {
   state.lines.splice(index, 1)
 }
 
+// Two taps (or Enter while saving) must not register the Purchase twice.
 async function onSubmit({ data }: FormSubmitEvent<z.output<typeof purchaseFormSchema>>) {
+  if (saving.value) return
   saving.value = true
   try {
     const purchase = await request(c => c.purchases.$post({ json: data }), { form: form.value })

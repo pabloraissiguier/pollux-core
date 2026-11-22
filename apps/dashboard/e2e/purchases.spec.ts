@@ -12,6 +12,18 @@ async function createSupplier(page: Page, supplier: { name: string, cuit?: strin
   await expect(dialog).toBeHidden()
 }
 
+/** Collects the Purchase writes the page sends, as `METHOD /path`. */
+function watchPurchaseWrites(page: Page) {
+  const writes: string[] = []
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname
+    if (path.startsWith('/purchases') && request.method() !== 'GET' && request.method() !== 'OPTIONS') {
+      writes.push(`${request.method()} ${path}`)
+    }
+  })
+  return writes
+}
+
 /** Adds a line to the new-Purchase form: searches the Product and types quantity and unit cost. */
 async function addLine(page: Page, line: { search: string, product: string, quantity: string, unitCost: string }) {
   await page.getByRole('button', { name: 'Agregar producto' }).click()
@@ -69,11 +81,13 @@ test('the owner creates and edits Suppliers, and a wrong CUIT is caught', async 
   await expect(page.getByText('No encontramos proveedores')).toBeVisible()
 })
 
-test('the owner registers a Purchase and sees On-hand stock rise', { tag: '@desktop' }, async ({ page, createOwner, signIn, openSidebar }) => {
+test('the owner registers a Purchase and sees On-hand stock rise', { tag: '@desktop' }, async ({ page, createOwner, signIn, openSidebar, callApi }) => {
   const userId = await createOwner('Gio Pack')
   await signIn(userId)
   await expect(page).toHaveURL('/')
-  await createProduct(page, { code: 'VAS-180', name: 'Vaso térmico 180 cc x 50', price: '1500' })
+  // The Vaso already has 10 on hand: the Purchase must add to them.
+  const vaso = await callApi(userId, 'POST', '/products', { code: 'VAS-180', name: 'Vaso térmico 180 cc x 50', price: '1500' })
+  await callApi(userId, 'POST', '/stock/adjustments', { productId: vaso.id, quantity: 10, reason: 'initial_count' })
   await createProduct(page, { code: 'BAN-103', name: 'Bandeja 103', price: '500' })
   await createSupplier(page, { name: 'Descartables del Sur' })
   await createSupplier(page, { name: 'Plásticos Córdoba' })
@@ -96,8 +110,11 @@ test('the owner registers a Purchase and sees On-hand stock rise', { tag: '@desk
   await expect(page.getByRole('status', { name: 'Total' })).toHaveText('$ 396.012,00')
   await page.getByRole('textbox', { name: 'Notas' }).fill('Llegó con el flete de la tarde')
 
-  await page.getByRole('button', { name: 'Registrar compra' }).click()
+  // A double tap registers it once.
+  const writes = watchPurchaseWrites(page)
+  await page.getByRole('button', { name: 'Registrar compra' }).dblclick()
   await expect(page).toHaveURL(/\/compras\/[0-9a-f-]{36}$/)
+  expect(writes).toEqual(['POST /purchases'])
   await expect(page.getByText('Compra registrada', { exact: true }).first()).toBeVisible()
   const details = page.getByRole('region', { name: 'Datos de la compra' })
   await expect(details).toContainText('Descartables del Sur')
@@ -114,8 +131,8 @@ test('the owner registers a Purchase and sees On-hand stock rise', { tag: '@desk
   // The Purchase raised On-hand stock, and the Product's movements name it.
   await lines.first().getByRole('link', { name: 'Vaso térmico 180 cc x 50' }).click()
   const stock = page.getByRole('region', { name: 'Stock', exact: true })
-  await expect(stock).toContainText('Físico 24')
-  await expect(stock).toContainText('Disponible 24')
+  await expect(stock).toContainText('Físico 34')
+  await expect(stock).toContainText('Disponible 34')
   const movements = page.getByRole('region', { name: 'Movimientos de stock' }).getByRole('listitem')
   await expect(movements.first()).toContainText('+24')
   await expect(movements.first()).toContainText('Compra · Factura A-0001-00012345')
