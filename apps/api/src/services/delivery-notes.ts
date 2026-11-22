@@ -1,16 +1,13 @@
-import { lineSubtotal, orderTotals } from '@pollux/contracts'
-import { branches, businesses, customers, orderLines, orders, products } from '@pollux/db/schema'
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { orderTotals } from '@pollux/contracts'
+import { branches, businesses, customers, orders } from '@pollux/db/schema'
+import { and, eq, sql } from 'drizzle-orm'
 import type { Database, Transaction } from '../db'
 import { ApiError } from '../errors'
+import { isOrder, orderNotFound, selectLines, toLine } from './orders'
 import { nextNumber } from './sequences'
 
-const orderNotFound = () => new ApiError(404, 'order_not_found', 'No encontramos el pedido')
 const orderCancelled = () =>
   new ApiError(409, 'order_cancelled', 'El pedido está cancelado y no tiene remito: no se puede emitir uno nuevo')
-
-const isOrder = (businessId: string, orderId: string) =>
-  and(eq(orders.businessId, businessId), eq(orders.id, orderId))
 
 /**
  * Issues the Order's Delivery note, or gets it when it was already issued. The first issue takes
@@ -23,13 +20,13 @@ const isOrder = (businessId: string, orderId: string) =>
 export async function issueDeliveryNote(db: Database, businessId: string, orderId: string) {
   return db.transaction(async (tx) => {
     const [order] = await tx
-      .select({ status: orders.status, number: orders.deliveryNoteNumber })
+      .select({ status: orders.status, deliveryNoteNumber: orders.deliveryNoteNumber })
       .from(orders)
       .where(isOrder(businessId, orderId))
       .for('update')
     if (!order) throw orderNotFound()
 
-    if (order.number === null) {
+    if (order.deliveryNoteNumber === null) {
       if (order.status === 'cancelled') throw orderCancelled()
       const number = await nextNumber(tx, businessId, 'delivery_note')
       await tx
@@ -41,7 +38,7 @@ export async function issueDeliveryNote(db: Database, businessId: string, orderI
   })
 }
 
-/** The data printed on an issued Delivery note: business, Customer, Branch, Order, lines, totals. */
+/** The data printed on a Delivery note, for an Order that already has its number: business, Customer, Branch, Order, lines, totals. */
 async function getDeliveryNote(tx: Transaction, businessId: string, orderId: string) {
   const [row] = await tx
     .select({
@@ -80,32 +77,14 @@ async function getDeliveryNote(tx: Transaction, businessId: string, orderId: str
     .innerJoin(branches, and(eq(branches.businessId, businessId), eq(branches.id, orders.branchId)))
     .where(isOrder(businessId, orderId))
 
-  const lineRows = await tx
-    .select({
-      productId: products.id,
-      productCode: products.code,
-      productName: products.name,
-      quantity: orderLines.quantity,
-      unitPrice: orderLines.unitPrice,
-      discountPercent: orderLines.discountPercent,
-    })
-    .from(orderLines)
-    .innerJoin(products, and(eq(products.businessId, businessId), eq(products.id, orderLines.productId)))
-    .where(and(eq(orderLines.businessId, businessId), eq(orderLines.orderId, orderId)))
-    .orderBy(asc(orderLines.position), asc(orderLines.id))
+  const lineRows = await selectLines(tx, businessId, [orderId])
 
   const { number, issuedAt, ...rest } = row!
   return {
     number: number!,
     issuedAt: issuedAt!,
     ...rest,
-    lines: lineRows.map(l => ({
-      product: { id: l.productId, code: l.productCode, name: l.productName },
-      quantity: l.quantity,
-      unitPrice: l.unitPrice,
-      discountPercent: l.discountPercent,
-      subtotal: lineSubtotal(l),
-    })),
+    lines: lineRows.map(toLine),
     totals: orderTotals(lineRows, row!.order.discountPercent),
   }
 }

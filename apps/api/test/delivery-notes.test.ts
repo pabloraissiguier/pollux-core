@@ -114,8 +114,8 @@ describe('issuing a Delivery note', () => {
         notes: 'Dejar en el depósito',
       },
       lines: [
-        { product: { id: vaso.id, code: vaso.code, name: 'Vaso' }, quantity: 10, unitPrice: '80.00', discountPercent: '10.00', subtotal: '720.00' },
-        { product: { id: servilleta.id, code: servilleta.code, name: 'Servilleta' }, quantity: 2, unitPrice: '1250.50', discountPercent: '0.00', subtotal: '2501.00' },
+        { id: order.lines[0].id, product: { id: vaso.id, code: vaso.code, name: 'Vaso' }, quantity: 10, unitPrice: '80.00', discountPercent: '10.00', subtotal: '720.00' },
+        { id: order.lines[1].id, product: { id: servilleta.id, code: servilleta.code, name: 'Servilleta' }, quantity: 2, unitPrice: '1250.50', discountPercent: '0.00', subtotal: '2501.00' },
       ],
       totals: { subtotal: '3221.00', discountAmount: '161.05', total: '3059.95' },
     })
