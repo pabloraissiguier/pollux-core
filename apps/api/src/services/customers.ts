@@ -41,11 +41,11 @@ const branchColumns = {
   notes: branches.notes,
 }
 
-const customerNotFound = () => new ApiError(404, 'customer_not_found', 'No encontramos el cliente')
+export const customerNotFound = () => new ApiError(404, 'customer_not_found', 'No encontramos el cliente')
 const branchNotFound = () => new ApiError(404, 'branch_not_found', 'No encontramos la sucursal de este cliente')
 
 /** This business's Customer with this id. */
-const isCustomer = (businessId: string, customerId: string) =>
+export const isCustomer = (businessId: string, customerId: string) =>
   and(eq(customers.businessId, businessId), eq(customers.id, customerId))
 
 /** Throws `customer_not_found` unless the Customer is in this business. */
