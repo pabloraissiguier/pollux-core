@@ -126,6 +126,30 @@ describe('issuing a Delivery note', () => {
   })
 })
 
+describe('Delivery notes for Delivered Orders', () => {
+  it('shows a Delivered Order as delivered, with its Delivered date', async () => {
+    const order = await pendingOrder()
+    expect((await post(`/orders/${order.id}/deliver`, { deliveredOn: '2026-11-25' })).status).toBe(200)
+
+    const note = await issued(order.id)
+
+    expect(note.order).toMatchObject({ id: order.id, status: 'delivered', deliveryDate: '2026-11-24', deliveredOn: '2026-11-25' })
+  })
+
+  it('keeps the number issued while Pending after the Order is delivered, and after Undo delivery', async () => {
+    const order = await pendingOrder()
+    const pending = await issued(order.id)
+
+    expect((await post(`/orders/${order.id}/deliver`, { deliveredOn: '2026-11-25' })).status).toBe(200)
+    const delivered = await issued(order.id)
+    expect((await post(`/orders/${order.id}/undo-delivery`)).status).toBe(200)
+    const undone = await issued(order.id)
+
+    expect(delivered).toMatchObject({ number: pending.number, issuedAt: pending.issuedAt, order: { status: 'delivered', deliveredOn: '2026-11-25' } })
+    expect(undone).toMatchObject({ number: pending.number, issuedAt: pending.issuedAt, order: { status: 'pending', deliveredOn: null } })
+  })
+})
+
 describe('Delivery note numbers', () => {
   it('numbers Delivery notes in the order they are first issued, not by Order number', async () => {
     const first = await pendingOrder()
