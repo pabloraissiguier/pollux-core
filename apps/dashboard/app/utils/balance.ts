@@ -22,7 +22,7 @@ export interface StatementEntryLabelInput {
  * How a Payment reads as a Statement entry: "Pago en efectivo". A sentence, not the method's name
  * (`paymentMethodLabels` in `format.ts`), so it lives with the Statement.
  */
-const statementPaymentLabels: Record<PaymentMethod, string> = {
+export const statementPaymentLabels: Record<PaymentMethod, string> = {
   cash: 'Pago en efectivo',
   bank_transfer: 'Pago por transferencia',
   check: 'Pago con cheque',

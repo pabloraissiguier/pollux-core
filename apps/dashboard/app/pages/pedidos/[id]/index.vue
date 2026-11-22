@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Payment } from '~/utils/payments'
+
 const route = useRoute()
 const { request } = useApi()
 const toast = useToast()
@@ -29,6 +31,11 @@ async function cancel() {
   } finally {
     cancelling.value = false
   }
+}
+
+function onPaymentVoided(voided: Payment) {
+  if (!order.value) return
+  order.value.payments = order.value.payments.map(payment => (payment.id === voided.id ? voided : payment))
 }
 
 async function undoDelivery() {
@@ -212,6 +219,23 @@ async function undoDelivery() {
           </template>
         </UCard>
 
+        <UCard
+          v-if="order.payments.length"
+          as="section"
+          aria-labelledby="pedido-pagos"
+        >
+          <h2
+            id="pedido-pagos"
+            class="font-semibold text-highlighted"
+          >
+            Pagos
+          </h2>
+          <PaymentList
+            :payments="order.payments"
+            @voided="onPaymentVoided"
+          />
+        </UCard>
+
         <UButton
           v-if="order.status === 'delivered'"
           label="Deshacer entrega"
@@ -257,7 +281,7 @@ async function undoDelivery() {
           </template>
         </UModal>
 
-        <OrderDeliverSheet
+        <PaymentSheet
           v-model:open="delivering"
           :order="order"
           @delivered="order = $event"
