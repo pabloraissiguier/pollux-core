@@ -5,6 +5,8 @@ import type { ApiClient } from '~/composables/useApi'
 /** A Customer as the API returns it, with all its Branches (oldest first). */
 export type Customer = InferResponseType<ApiClient['customers'][':id']['$get'], 200>
 export type Branch = Customer['branches'][number]
+/** What picking a Customer needs (for an Order, as a filter): a list item and the detail both fit. */
+export type CustomerOption = Pick<Customer, 'id' | 'name' | 'branches'>
 
 /** The fields of the Customer form, as typed (the shared schema trims and turns '' into null). */
 export interface CustomerFormState {
