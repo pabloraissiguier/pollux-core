@@ -17,10 +17,24 @@ const { data: history, refresh: refreshHistory } = await useAsyncData(
   () => request(c => c.products[':id']['price-history'].$get({ param: { id }, query: { limit: '50' } }))
 )
 
+// Newest first. "Ver más" asks for a longer list, up to the API's page limit.
+const MOVEMENTS_STEP = 20
+const MOVEMENTS_MAX = 200
+const movementsLimit = ref(MOVEMENTS_STEP)
+const { data: movements, status: movementsStatus, refresh: refreshMovements } = await useAsyncData(
+  `producto-${id}-movimientos`,
+  () => request(c => c.stock.movements.$get({ query: { productId: id, limit: String(movementsLimit.value) } })),
+  { watch: [movementsLimit] }
+)
+const canShowMoreMovements = computed(() => !!movements.value
+  && movements.value.total > movements.value.items.length
+  && movementsLimit.value < MOVEMENTS_MAX)
+
 useSeoMeta({ title: () => product.value?.name ?? 'Producto' })
 
 const editing = ref(false)
 const changingPrice = ref(false)
+const adjustingStock = ref(false)
 const togglingActive = ref(false)
 
 // Every write answers with the whole Product, so it replaces what the page shows.
@@ -31,6 +45,11 @@ function onSaved(saved: Product) {
 async function onPriceSaved(saved: Product) {
   product.value = saved
   await refreshHistory()
+}
+
+async function onStockAdjusted(saved: Product) {
+  product.value = saved
+  await refreshMovements()
 }
 
 async function setActive(isActive: boolean) {
@@ -160,6 +179,89 @@ function changeSummary(change: { oldPrice: string | null, newPrice: string }) {
         </UCard>
 
         <UCard>
+          <section
+            aria-labelledby="stock"
+            class="flex flex-col gap-4"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2
+                id="stock"
+                class="font-semibold text-highlighted"
+              >
+                Stock
+              </h2>
+              <UButton
+                label="Ajustar stock"
+                icon="i-lucide-package-plus"
+                color="neutral"
+                variant="outline"
+                @click="adjustingStock = true"
+              />
+            </div>
+
+            <ProductStockFigures :stock="product.stock" />
+          </section>
+        </UCard>
+
+        <UCard>
+          <section aria-labelledby="movimientos-stock">
+            <h2
+              id="movimientos-stock"
+              class="mb-2 font-semibold text-highlighted"
+            >
+              Movimientos de stock
+            </h2>
+
+            <USkeleton
+              v-if="movementsStatus === 'pending' && !movements"
+              class="h-16 w-full"
+            />
+            <ul
+              v-else-if="movements?.items.length"
+              class="divide-y divide-default"
+            >
+              <li
+                v-for="movement in movements.items"
+                :key="movement.id"
+                class="flex items-start justify-between gap-3 py-2"
+              >
+                <span class="flex min-w-0 flex-col">
+                  <span class="text-highlighted">{{ movementCause(movement) }}</span>
+                  <span
+                    v-if="movement.notes"
+                    class="text-sm text-default"
+                  >{{ movement.notes }}</span>
+                  <span class="text-sm text-muted">
+                    {{ formatDate(movement.createdAt) }}<template v-if="movement.createdBy?.fullName"> · {{ movement.createdBy.fullName }}</template>
+                  </span>
+                </span>
+                <span
+                  class="shrink-0 font-medium tabular-nums"
+                  :class="movement.quantity < 0 ? 'text-error' : 'text-success'"
+                >{{ formatUnitsChange(movement.quantity) }}</span>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="text-sm text-muted"
+            >
+              Sin movimientos de stock.
+            </p>
+
+            <UButton
+              v-if="canShowMoreMovements"
+              label="Ver más"
+              color="neutral"
+              variant="ghost"
+              :loading="movementsStatus === 'pending'"
+              block
+              class="mt-2"
+              @click="movementsLimit = Math.min(movementsLimit + MOVEMENTS_STEP, MOVEMENTS_MAX)"
+            />
+          </section>
+        </UCard>
+
+        <UCard>
           <section aria-labelledby="historial-precios">
             <h2
               id="historial-precios"
@@ -196,6 +298,11 @@ function changeSummary(change: { oldPrice: string | null, newPrice: string }) {
           v-model:open="editing"
           :product="product"
           @saved="onSaved"
+        />
+        <ProductStockAdjustmentModal
+          v-model:open="adjustingStock"
+          :product="product"
+          @saved="onStockAdjusted"
         />
         <ProductPriceChangeModal
           v-model:open="changingPrice"

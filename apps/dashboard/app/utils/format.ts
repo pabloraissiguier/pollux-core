@@ -29,6 +29,19 @@ export function formatPercent(value: Percent): string {
   return `${percent.format(value as `${number}`)}${NO_BREAK_SPACE}%`
 }
 
+const units = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
+const unitsChange = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0, signDisplay: 'exceptZero' })
+
+/** A stock quantity in whole units: `12345` → `"12.345"`. Stock can be negative: `"-7"`. */
+export function formatUnits(value: number): string {
+  return units.format(value)
+}
+
+/** A Stock movement's signed quantity: `24` → `"+24"`, `-3` → `"-3"`. */
+export function formatUnitsChange(value: number): string {
+  return unitsChange.format(value)
+}
+
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 const dateInArgentina = new Intl.DateTimeFormat('es-AR', { timeZone: TIME_ZONE, day: '2-digit', month: '2-digit', year: 'numeric' })
 
