@@ -56,6 +56,13 @@ export function branchLabel(branch: Pick<Branch, 'name' | 'address' | 'city'>): 
   return [branch.name, `${branch.address}, ${branch.city}`].filter(Boolean).join(' · ')
 }
 
+/** A Customer's tax details in one line ("CUIT 33-69345023-9 · Responsable Inscripto"), or `''` when there are none. */
+export function customerTaxLine(customer: { cuit: string | null, vatCondition: VatCondition | null }): string {
+  return [customer.cuit && `CUIT ${maskCuit(customer.cuit)}`, customer.vatCondition && vatConditionLabels[customer.vatCondition]]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 /** A `tel:` link for a phone as people type it ("03468 15-123456"): digits and a leading +. */
 export function phoneHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`

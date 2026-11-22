@@ -1,5 +1,11 @@
 import { expect, test } from './fixtures'
 
+/** Today in Argentina as `dd/mm/yyyy`, the day the Delivery note is issued. */
+function issuedToday(): string {
+  const [y, m, d] = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date()).split('-')
+  return `${d}/${m}/${y}`
+}
+
 interface CustomerWithBranches { id: string, branches: { id: string }[] }
 
 test('the owner prints a Delivery note and a reprint keeps its number', { tag: '@desktop' }, async ({ page, createOwner, signIn, callApi }) => {
@@ -46,6 +52,7 @@ test('the owner prints a Delivery note and a reprint keeps its number', { tag: '
   await expect(page.getByText('Kiosco La Esquina')).toBeVisible()
   await expect(page.getByText('CUIT 33-69345023-9')).toBeVisible()
   await expect(page.getByText('Centro · San Martín 100, Corral de Bustos')).toBeVisible()
+  await expect(page.getByText(`Fecha ${issuedToday()}`)).toBeVisible()
   await expect(page.getByText('10/03/2026')).toBeVisible()
 
   const rows = page.getByRole('table', { name: 'Productos' }).getByRole('row')
@@ -73,4 +80,8 @@ test('the owner prints a Delivery note and a reprint keeps its number', { tag: '
   await expect(page.getByRole('heading', { name: 'Remito N° 2' })).toBeVisible()
   // The app doesn't reload on the way back, so the count goes on: the reprint opened the dialog too.
   await expect.poll(() => page.evaluate(() => (window as unknown as { printed: number }).printed)).toBe(3)
+
+  // A fresh load of the print view still shows the same number.
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Remito N° 2' })).toBeVisible()
 })

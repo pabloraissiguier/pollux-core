@@ -101,13 +101,11 @@ watch(status, (value) => {
           </dt>
           <dd>{{ note.customer.legalName }}</dd>
         </template>
-        <template v-if="note.customer.cuit || note.customer.vatCondition">
+        <template v-if="customerTaxLine(note.customer)">
           <dt class="text-muted">
             Fiscal
           </dt>
-          <dd>
-            {{ [note.customer.cuit && `CUIT ${maskCuit(note.customer.cuit)}`, note.customer.vatCondition && vatConditionLabels[note.customer.vatCondition]].filter(Boolean).join(' · ') }}
-          </dd>
+          <dd>{{ customerTaxLine(note.customer) }}</dd>
         </template>
         <dt class="text-muted">
           Sucursal
