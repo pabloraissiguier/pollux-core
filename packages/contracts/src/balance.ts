@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { moneySchema } from './money'
-import { daySchema } from './orders'
+import { daySchema, pastDaySchema } from './day'
 import { paginationSchema } from './pagination'
 
 /**
@@ -23,24 +23,24 @@ const signedAmount = moneySchema.refine(v => v !== '0.00', { message: 'El import
 
 /**
  * Saldo inicial: the Balance a Customer carried over from before the app (e.g. the Excel sheet),
- * on the day it was taken. Positive is a debt, negative a credit in the Customer's favor.
- * Entered once per Customer.
+ * on the day it was taken, never later than today. Positive is a debt, negative a credit in the
+ * Customer's favor. Entered once per Customer.
  */
 export const openingBalanceSchema = z.object({
   amount: signedAmount,
-  entryDate: daySchema,
+  entryDate: pastDaySchema('La fecha del saldo inicial no puede ser futura'),
 })
 export type OpeningBalanceInput = z.input<typeof openingBalanceSchema>
 
 /**
  * Ajuste de saldo: a manual change to a Customer's Balance with a required reason, such as
  * writing off a bad debt (negative) or fixing a carried-over mistake. `entryDate` defaults to
- * today.
+ * today and may not be later.
  */
 export const balanceAdjustmentSchema = z.object({
   amount: signedAmount,
   reason: z.string().trim().min(1, 'Ingresá el motivo del ajuste').max(500),
-  entryDate: daySchema.optional(),
+  entryDate: pastDaySchema('La fecha del ajuste no puede ser futura').optional(),
 })
 export type BalanceAdjustmentInput = z.input<typeof balanceAdjustmentSchema>
 

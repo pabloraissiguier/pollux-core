@@ -77,11 +77,11 @@ A customer's Balance entries in date order, each with the Balance right after it
 _Avoid_: Extracto, ledger, account history
 
 **Saldo inicial (Opening balance)**:
-The Balance a customer carried over from before the app (e.g. from the Excel sheet), entered once with its date.
+The Balance a customer carried over from before the app (e.g. from the Excel sheet), entered once with the day it was taken, never later than today (in Córdoba).
 _Avoid_: Saldo anterior, deuda previa
 
 **Ajuste de saldo (Balance adjustment)**:
-A manual change to a customer's Balance with a required reason, such as writing off a bad debt or fixing a carried-over mistake.
+A manual change to a customer's Balance with a required reason, such as writing off a bad debt or fixing a carried-over mistake. It is dated by the day it takes effect, never later than today (in Córdoba).
 _Avoid_: Fake payment, nota de crédito
 
 **Pago (Payment)**:
@@ -153,5 +153,5 @@ _Avoid_: Corrección
 A business the distributor buys Products from.
 
 **Compra (Purchase)**:
-A record of Products received from a Supplier, with quantities and unit costs. Registering it raises On-hand stock.
+A record of Products received from a Supplier, with quantities and unit costs. Registering it raises On-hand stock. It is entered when the goods arrive, so its date (Fecha de compra) is never later than today (in Córdoba); goods ordered but not yet received are not a Purchase.
 _Avoid_: Boleta de compra (in code), factura de compra, purchase order

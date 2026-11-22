@@ -103,6 +103,25 @@ describe('registering a Purchase', () => {
     expect(purchase).toMatchObject({ purchasedOn: today, invoiceNumber: null, notes: null })
   })
 
+  it('refuses a Purchase date later than today in Córdoba, and changes no stock', async () => {
+    const supplier = await createSupplier()
+    const product = await createProduct()
+    const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Cordoba' })
+      .format(new Date(Date.now() + 24 * 60 * 60 * 1000))
+
+    const res = await post('/purchases', {
+      supplierId: supplier.id,
+      purchasedOn: tomorrow,
+      lines: [{ productId: product.id, quantity: 5, unitCost: '1.00' }],
+    })
+
+    expect(res.status).toBe(400)
+    const { error } = await res.json()
+    expect(error.code).toBe('validation_error')
+    expect(error.details.purchasedOn).toEqual(['La fecha de compra no puede ser futura'])
+    expect(await onHand(product.id)).toBe(0)
+  })
+
   it('refuses no lines, a quantity of zero or a negative unit cost, and changes no stock', async () => {
     const supplier = await createSupplier()
     const product = await createProduct()
