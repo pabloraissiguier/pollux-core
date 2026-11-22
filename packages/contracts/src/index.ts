@@ -1,4 +1,5 @@
 export * from './balance'
+export * from './business'
 export * from './catalog'
 export * from './cuit'
 export * from './customers'
