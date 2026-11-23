@@ -116,7 +116,7 @@ async function tabTo(page: Page, target: Locator) {
   await expect(target).toBeFocused()
 }
 
-test('the owner takes a phone Order at the PC with the keyboard alone after picking the Customer', { tag: '@desktop' }, async ({ page, createOwner, signIn, createCustomer, callApi }) => {
+test('the owner takes a phone Order at the PC with the keyboard alone after picking the Customer', { tag: '@desktop' }, async ({ page, isMobile, createOwner, signIn, createCustomer, callApi }) => {
   const userId = await createOwner('Gio Pack')
   await createCustomer(userId, { name: 'Kiosco La Esquina', branches: [{ address: 'Belgrano 50', city: 'Corral de Bustos' }] })
   await callApi(userId, 'POST', '/products', { code: 'BAN-103', name: 'Bandeja 103', price: '500' })
@@ -134,6 +134,16 @@ test('the owner takes a phone Order at the PC with the keyboard alone after pick
   const search = picker.getByRole('combobox', { name: 'Buscar producto' })
   const lines = page.getByRole('region', { name: 'Productos del pedido' })
   const writes = watchOrderWrites(page)
+
+  if (isMobile) {
+    // On a phone the keyboard's search key only searches: a Product is added by tapping it.
+    await search.fill('bandeja')
+    await search.press('Enter')
+    await expect(picker.getByRole('option', { name: /Bandeja 103/ })).toBeVisible()
+    await expect(page.getByText('Todavía no agregaste productos.')).toBeVisible()
+    return
+  }
+
   await tabTo(page, search)
 
   // Enter right after typing adds the first result of that search, not of an older one.
