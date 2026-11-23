@@ -176,7 +176,7 @@ test('the owner calls a Customer, edits their details and keeps their Branches u
   await expect(page.getByRole('link', { name: /Kiosco La Nueva Esquina.*Corral de Bustos, Isla Verde/ })).toBeVisible()
 })
 
-test('fixing a field with an error and tapping save once saves the form', async ({ page, createOwner, signIn }) => {
+test('the owner fixes a field with an error and saves with a single tap', async ({ page, createOwner, signIn }) => {
   const userId = await createOwner('Gio Pack')
   await signIn(userId)
   await expect(page).toHaveURL('/')
