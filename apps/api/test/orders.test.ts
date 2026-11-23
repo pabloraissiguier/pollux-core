@@ -531,6 +531,9 @@ describe('listing Orders', () => {
     expect((await list('status=cancelled')).numbers).toEqual([cancelled.number])
     const page = await list('limit=1&offset=1')
     expect(page).toMatchObject({ numbers: [pepeTomorrow.number], total: 4 })
+    // A later page carries its own Orders' lines, not the first page's.
+    expect(page.items[0].lines).toMatchObject([{ product: { id: product.id }, quantity: 1 }])
+    expect(page.items[0].totals.total).toBe('10.00')
 
     const invalid = await as('/orders?status=borrador&deliveryDate=mañana')
     expect(invalid.status).toBe(400)

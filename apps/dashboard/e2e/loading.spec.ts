@@ -29,3 +29,26 @@ test('a tap answers at once on a slow connection: the page opens with placeholde
   await expect(page.getByRole('status').filter({ hasText: 'Cargando…' })).toHaveCount(0)
   await expect(page.getByRole('progressbar')).toHaveCount(0)
 })
+
+test('on a new visit the page loads its data without waiting for the owner\'s businesses, when this device remembers the business', async ({ page, createOwner, signIn, createCustomer }) => {
+  const userId = await createOwner('Gio Pack')
+  await createCustomer(userId, { name: 'Kiosco La Esquina', branches: [{ address: 'San Martín 100', city: 'Corral de Bustos' }] })
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+
+  // Hold `GET /me` until the test lets it through, as a slow API would.
+  let release!: () => void
+  const released = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route(url => apiPath(url.href) === '/me', async (route) => {
+    await released
+    await route.continue()
+  })
+
+  await page.goto('/clientes')
+  await expect(page.getByRole('link', { name: /Kiosco La Esquina/ })).toBeVisible()
+
+  release()
+  await expect(page).toHaveURL('/clientes')
+})

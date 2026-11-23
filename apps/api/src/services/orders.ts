@@ -1,7 +1,7 @@
 import { lineSubtotal, orderTotals } from '@pollux/contracts'
 import type { orderCreateSchema, orderListQuerySchema, orderUpdateSchema } from '@pollux/contracts'
 import { branches, customers, orderLines, orders, products } from '@pollux/db/schema'
-import { and, asc, count, desc, eq, inArray, notInArray, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, notInArray, sql, type SQLWrapper } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Database, DbOrTx, Transaction } from '../db'
 import { ApiError } from '../errors'
@@ -62,9 +62,12 @@ function selectOrders(db: DbOrTx, businessId: string) {
 
 type OrderRow = Awaited<ReturnType<typeof selectOrders>>[number]
 
-/** The lines of the given Orders, in their entered order, each with its Product. */
-export async function selectLines(db: DbOrTx, businessId: string, orderIds: string[]) {
-  if (orderIds.length === 0) return []
+/**
+ * The lines of the given Orders, in their entered order, each with its Product. `orderIds` is a
+ * list of ids or a subquery selecting them (so a list can fetch its lines in the same round trip).
+ */
+export async function selectLines(db: DbOrTx, businessId: string, orderIds: string[] | SQLWrapper) {
+  if (Array.isArray(orderIds) && orderIds.length === 0) return []
   return db
     .select({
       id: orderLines.id,
@@ -344,20 +347,31 @@ export async function listOrders(db: Database, businessId: string, query: ValidO
     customerId ? eq(orders.customerId, customerId) : undefined,
   )
 
-  const [rows, [counted]] = await Promise.all([
-    selectOrders(db, businessId)
-      .where(where)
-      .orderBy(desc(orders.deliveryDate), asc(sql`lower(${branches.city})`), asc(orders.number))
-      .limit(limit)
-      .offset(offset),
+  // Number is unique per business, so this order is total: the page and its ids subquery below
+  // pick the same Orders.
+  const order = [desc(orders.deliveryDate), asc(sql`lower(${branches.city})`), asc(orders.number)]
+  const pageIds = db
+    .select({ id: orders.id })
+    .from(orders)
+    .innerJoin(branches, and(eq(branches.businessId, businessId), eq(branches.id, orders.branchId)))
+    .where(where)
+    .orderBy(...order)
+    .limit(limit)
+    .offset(offset)
+
+  // Sent together: postgres-js pipelines them on one connection, so the page, its total and its
+  // lines cost one round trip to the DB.
+  const [rows, [counted], lines] = await Promise.all([
+    selectOrders(db, businessId).where(where).orderBy(...order).limit(limit).offset(offset),
     db
       .select({ total: count() })
       .from(orders)
       .innerJoin(branches, and(eq(branches.businessId, businessId), eq(branches.id, orders.branchId)))
       .where(where),
+    selectLines(db, businessId, pageIds),
   ])
   const linesByOrder = new Map<string, LineRow[]>()
-  for (const line of await selectLines(db, businessId, rows.map(r => r.id))) {
+  for (const line of lines) {
     linesByOrder.set(line.orderId, [...(linesByOrder.get(line.orderId) ?? []), line])
   }
   return {

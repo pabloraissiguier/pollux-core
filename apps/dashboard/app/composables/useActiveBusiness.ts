@@ -51,6 +51,20 @@ export function useActiveBusiness() {
     return activeBusinessId.value !== null
   }
 
+  /**
+   * Makes the business this device chose for the user active right away, before `GET /me`
+   * answers, so the first page can load its data at once instead of waiting for `/me`. Returns
+   * false when the device has no choice for them. A stale choice is caught by the API (403
+   * `not_a_member`, which sends the user to the picker) or by `loadBusinesses` afterwards.
+   */
+  function restoreChoice(id: string): boolean {
+    const stored = readStorage(storageKey(id))
+    if (!stored) return false
+    userId.value = id
+    activeBusinessId.value = stored
+    return true
+  }
+
   /** Forgets the signed-in user's businesses in memory (the device keeps their choice). */
   function forgetSession() {
     userId.value = null
@@ -58,5 +72,5 @@ export function useActiveBusiness() {
     activeBusinessId.value = null
   }
 
-  return { businesses, activeBusinessId, activeBusiness, hasSeveral, selectBusiness, forgetBusiness, renameActiveBusiness, loadBusinesses, forgetSession }
+  return { businesses, activeBusinessId, activeBusiness, hasSeveral, selectBusiness, forgetBusiness, renameActiveBusiness, loadBusinesses, restoreChoice, forgetSession }
 }

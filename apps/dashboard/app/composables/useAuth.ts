@@ -69,5 +69,15 @@ export function useAuth() {
     return data.session?.access_token ?? null
   }
 
-  return { testMode, signedIn: readonly(signedIn), init, signIn, signOut, accessToken }
+  /**
+   * The signed-in user's id, read from the stored session without asking the API, or null. In
+   * test mode the token is the user id.
+   */
+  async function userId(): Promise<string | null> {
+    if (testMode) return readStorage(TEST_TOKEN_KEY)
+    const { data } = await supabaseClient(config).auth.getSession()
+    return data.session?.user.id ?? null
+  }
+
+  return { testMode, signedIn: readonly(signedIn), init, signIn, signOut, accessToken, userId }
 }
