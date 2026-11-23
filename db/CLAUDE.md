@@ -7,7 +7,7 @@ This file covers the database schema and migrations. Product context and the dom
 - **The dev database is a remote Supabase project**, and that stays true for all of app development.
 - **The `db` service in `docker-compose.yml` (Postgres 17, port 5433) is for the API tests only.** Before each run, the suite recreates a `pollux_test` database there, adds a stand-in `auth.users` (`id uuid primary key`) and applies `db/migrations`, which also proves the migrations run on plain Postgres. See `apps/api/CLAUDE.md`. The project ref is `jjynfsqpwktsckqrjfuu` (also pinned in `.mcp.json`).
 - **Self-hosted Postgres is a possible future move, not a current task.** Keep the schema portable (see the rules below) so that move would be a data migration, not a rewrite.
-- **Connection strings live in `.env` (gitignored).** Use the Supabase **session pooler** (port 5432) for migrations and long-lived connections, and the **transaction pooler** (port 6543, with prepared statements disabled, `prepare: false`) for serverless runtimes.
+- **Connection strings live in `.env` (gitignored).** Use the Supabase **session pooler** (port 5432) for migrations and for the API, on Vercel too. Don't use the **transaction pooler** (port 6543): with postgres-js pipelining it leaves backends stuck (see `apps/api/CLAUDE.md`).
 
 ## Multi-tenancy
 

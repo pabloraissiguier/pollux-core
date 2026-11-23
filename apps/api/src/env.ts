@@ -22,10 +22,8 @@ if (rootEnvFile) process.loadEnvFile(rootEnvFile)
 
 const schema = z.object({
   NODE_ENV: z.string().default('development'),
-  /** Session pooler (5432) for the Node server and the CLI. */
+  /** Session pooler (5432), for every runtime: the Node server, the CLI and Vercel. */
   DATABASE_URL: z.url(),
-  /** Transaction pooler (6543), used on Vercel with prepared statements off. */
-  DATABASE_POOLER_URL: z.url().optional(),
   SUPABASE_URL: z.url(),
   API_PORT: z.coerce.number().int().positive().default(3001),
   /**

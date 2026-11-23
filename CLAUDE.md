@@ -93,7 +93,7 @@ Copy `.env.example` to `.env` and fill in the Supabase values. The dev DB is rem
 
 ## Deployment (Vercel, POC)
 
-`vercel.json` deploys one Vercel project with two **services**: `dashboard` (Nuxt, public at `/`) and `api` (Hono, public at `/api`). Vercel passes the path through unchanged, so the API serves its routes under `/api` itself (`apps/api/src/index.ts`), and a dashboard built on Vercel calls `/api` on its own origin (no CORS needed). No service calls another server-side, so there are no bindings. Project env vars: `DATABASE_URL`, `DATABASE_POOLER_URL` (the API uses the transaction pooler on Vercel), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (read by the dashboard at build time) and `ENABLE_EXPERIMENTAL_COREPACK=1` (so Vercel uses the pinned pnpm). Installs pass `--config.engine-strict=false`, since Vercel's Node 24 patch may not be the pinned one.
+`vercel.json` deploys one Vercel project with two **services**: `dashboard` (Nuxt, public at `/`) and `api` (Hono, public at `/api`). Vercel passes the path through unchanged, so the API serves its routes under `/api` itself (`apps/api/src/index.ts`), and a dashboard built on Vercel calls `/api` on its own origin (no CORS needed). No service calls another server-side, so there are no bindings. Project env vars: `DATABASE_URL` (the session pooler, port 5432; the API doesn't use the transaction pooler, see `apps/api/CLAUDE.md`), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (read by the dashboard at build time) and `ENABLE_EXPERIMENTAL_COREPACK=1` (so Vercel uses the pinned pnpm). Installs pass `--config.engine-strict=false`, since Vercel's Node 24 patch may not be the pinned one.
 
 ## Working on tickets
 

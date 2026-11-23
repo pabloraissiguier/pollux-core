@@ -12,10 +12,11 @@ import { readEnv } from './env'
 
 const env = readEnv()
 
-// Serverless functions go through the transaction pooler, which can't use prepared statements.
-const { db } = env.VERCEL
-  ? createDb(env.DATABASE_POOLER_URL ?? env.DATABASE_URL, { max: 1, prepare: false })
-  : createDb(env.DATABASE_URL)
+// Every runtime uses the session pooler (DATABASE_URL). Not the transaction pooler: postgres-js
+// pipelines concurrent queries (e.g. `Promise.all`) on one connection, and Supavisor in
+// transaction mode leaves a backend stuck at PARSE, hanging every later request. Serverless
+// functions keep a single connection and drop it when idle.
+const { db } = createDb(env.DATABASE_URL, env.VERCEL ? { max: 1 } : {})
 
 const verifyToken = env.API_AUTH_VERIFIER === 'test'
   ? createTestVerifier()
