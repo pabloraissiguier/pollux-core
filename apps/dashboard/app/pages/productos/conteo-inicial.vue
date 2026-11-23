@@ -151,7 +151,6 @@ async function onError(event: FormErrorEvent) {
         ref="form"
         :schema="initialCountFormSchema"
         :state="state"
-        :validate-on="['input']"
         @submit="onSubmit"
         @error="onError"
       >

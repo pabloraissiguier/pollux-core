@@ -125,7 +125,6 @@ const { saving: sending, onSubmit } = useFormSubmit<PaymentFormOutput>(null, asy
           :schema="schema"
           :state="state"
           :validate="validateCustomer"
-          :validate-on="['input']"
           class="flex flex-col gap-4"
           @submit="onSubmit"
         >

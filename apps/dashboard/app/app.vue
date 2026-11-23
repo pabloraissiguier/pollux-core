@@ -10,12 +10,17 @@ useHead({
 useSeoMeta({
   titleTemplate: title => (title ? `${title} · Pollux` : 'Pollux')
 })
+
+// Forms validate as fields are typed in, never on blur: see "Form validation" in CLAUDE.md.
+const componentDefaults = { form: { validateOn: ['input' as const] } }
 </script>
 
 <template>
-  <UApp :locale="es">
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
-  </UApp>
+  <UTheme :props="componentDefaults">
+    <UApp :locale="es">
+      <NuxtLayout>
+        <NuxtPage />
+      </NuxtLayout>
+    </UApp>
+  </UTheme>
 </template>

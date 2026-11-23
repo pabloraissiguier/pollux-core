@@ -175,3 +175,25 @@ test('the owner calls a Customer, edits their details and keeps their Branches u
   await page.getByRole('link', { name: 'Volver a clientes' }).click()
   await expect(page.getByRole('link', { name: /Kiosco La Nueva Esquina.*Corral de Bustos, Isla Verde/ })).toBeVisible()
 })
+
+test('the owner fixes a field with an error and saves with a single tap', async ({ page, createOwner, signIn }) => {
+  const userId = await createOwner('Gio Pack')
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+
+  await page.goto('/clientes/nuevo')
+  await page.getByRole('textbox', { name: 'Dirección' }).fill('San Martín 123')
+  await page.getByRole('textbox', { name: 'Localidad' }).fill('Corral de Bustos')
+  const save = page.getByRole('button', { name: 'Guardar cliente' })
+  await save.click()
+  const name = page.getByRole('textbox', { name: 'Nombre' })
+  await expect(name).toHaveAttribute('aria-invalid', 'true')
+
+  // Tapping save blurs the fixed field first. Its error must not vanish then and move the button
+  // away from under the finger.
+  await name.fill('Almacén Don José')
+  await save.click()
+
+  await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/)
+  await expect(page.getByRole('heading', { name: 'Almacén Don José', level: 1 })).toBeVisible()
+})
