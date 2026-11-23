@@ -12,10 +12,10 @@ const PAGE_SIZE = 200
 
 const { request } = useApi()
 const toast = useToast()
-const { data: categories } = await useCategories()
+const { data: categories } = useCategories()
 const form = useTemplateRef('form')
 
-const { data: products, status } = await useAsyncData('conteo-inicial', async () => {
+const { data: products, status } = useLazyAsyncData('conteo-inicial', async () => {
   const items: Product[] = []
   let total = Infinity
   while (items.length < total) {
@@ -132,9 +132,9 @@ async function onError(event: FormErrorEvent) {
         Escribí cuántas unidades contaste. Cada producto queda con esa cantidad de stock físico, y la diferencia se registra como ajuste de conteo inicial. Los que dejes vacíos no cambian.
       </p>
 
-      <USkeleton
+      <SkeletonList
         v-if="status === 'pending' && !products"
-        class="h-32 w-full"
+        trailing
       />
 
       <UEmpty

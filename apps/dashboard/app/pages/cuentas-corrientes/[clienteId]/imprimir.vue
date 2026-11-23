@@ -23,7 +23,7 @@ const day = (value: unknown) => (typeof value === 'string' && /^\d{4}-\d{2}-\d{2
 const from = day(route.query.desde)
 const to = day(route.query.hasta)
 
-const { data: current } = await useAsyncData(
+const { data: current } = useLazyAsyncData(
   `cliente-${customerId}-saldo`,
   () => request(c => c.customers[':id'].balance.$get({ param: { id: customerId } }))
 )
@@ -46,7 +46,7 @@ async function balanceThrough(to: string | undefined): Promise<Money> {
   return items[0]!.balance
 }
 
-const { data: sheet, status } = await useAsyncData(`resumen-${customerId}-imprimir`, async () => {
+const { data: sheet, status } = useLazyAsyncData(`resumen-${customerId}-imprimir`, async () => {
   const entries: StatementEntry[] = []
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const page = await statementPage({ from, to, limit: PAGE_SIZE, offset })

@@ -5,7 +5,7 @@ const route = useRoute()
 const { request } = useApi()
 const id = String(route.params.id)
 
-const { data: customer, status } = await useAsyncData(
+const { data: customer, status } = useLazyAsyncData(
   `cliente-${id}`,
   () => request(c => c.customers[':id'].$get({ param: { id } }))
 )
@@ -16,12 +16,12 @@ useSeoMeta({ title: () => customer.value?.name ?? 'Cliente' })
 const RECENT_ORDERS = 5
 
 // Same key and shape as the Statement page, so going there shows the Balance straight away.
-const { data: balance, refresh: refreshBalance } = await useAsyncData(
+const { data: balance, refresh: refreshBalance } = useLazyAsyncData(
   `cliente-${id}-saldo`,
   () => request(c => c.customers[':id'].balance.$get({ param: { id } }))
 )
 
-const { data: recentOrders } = await useAsyncData(
+const { data: recentOrders } = useLazyAsyncData(
   `cliente-${id}-pedidos`,
   () => request(c => c.orders.$get({ query: { customerId: id, limit: String(RECENT_ORDERS) } }))
 )
@@ -29,7 +29,7 @@ const { data: recentOrders } = await useAsyncData(
 /** How many Payments the page shows; all of them are on the Statement. */
 const RECENT_PAYMENTS = 5
 
-const { data: recentPayments, refresh: refreshPayments } = await useAsyncData(
+const { data: recentPayments, refresh: refreshPayments } = useLazyAsyncData(
   `cliente-${id}-pagos`,
   () => request(c => c.payments.$get({ query: { customerId: id, limit: String(RECENT_PAYMENTS) } }))
 )
@@ -81,9 +81,9 @@ function onSaved(saved: Customer) {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonDetail
         v-if="status === 'pending' && !customer"
-        class="h-48 w-full"
+        :cards="3"
       />
 
       <UEmpty

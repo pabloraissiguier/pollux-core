@@ -14,14 +14,14 @@ const PAGE_SIZE = 200
 const { request } = useApi()
 const today = todayInArgentina()
 
-const { data: toDeliver } = await useAsyncData(
+const { data: toDeliver } = useLazyAsyncData(
   'inicio-para-entregar',
   () => request(c => c.orders.$get({ query: { status: 'pending', deliveryDate: today, limit: String(PAGE_SIZE) } }))
 )
 const toDeliverTotal = computed(() => toDeliver.value && sumMoney(toDeliver.value.items.map(o => o.totals.total)))
 
 // Only the grand total is needed, not the list.
-const { data: balances, refresh: refreshBalances } = await useAsyncData(
+const { data: balances, refresh: refreshBalances } = useLazyAsyncData(
   'inicio-saldo-total',
   () => request(c => c.customers['with-balance'].$get({ query: { limit: '1' } }))
 )
@@ -29,10 +29,9 @@ const { data: balances, refresh: refreshBalances } = await useAsyncData(
 // Stock a reponer: Products whose Available stock is below zero, largest shortfall first, with the
 // Pending Orders that reserve them. Shown only when there is one.
 const SHORTAGES_SHOWN = 50
-const { data: shortages } = await useAsyncData(
+const { data: shortages } = useLazyAsyncData(
   'inicio-stock-a-reponer',
-  () => request(c => c.stock.shortages.$get({ query: { limit: String(SHORTAGES_SHOWN) } })),
-  { lazy: true }
+  () => request(c => c.stock.shortages.$get({ query: { limit: String(SHORTAGES_SHOWN) } }))
 )
 
 const paying = ref(false)

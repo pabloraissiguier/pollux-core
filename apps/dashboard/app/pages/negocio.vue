@@ -7,7 +7,7 @@ const { businesses, activeBusinessId, selectBusiness, loadBusinesses } = useActi
 const { signOut } = useSignOut()
 
 // Always fresh: the picker is where a stale or revoked choice ends up.
-const { status, refresh } = await useAsyncData('negocio-businesses', async () => {
+const { status, refresh } = useLazyAsyncData('negocio-businesses', async () => {
   if (await loadBusinesses() && businesses.value?.length === 1) {
     await navigateTo(safeRedirect(route.query.redirect), { replace: true })
   }
@@ -28,9 +28,9 @@ async function choose(id: string) {
       description="Podés cambiarlo después desde el menú."
       icon="i-lucide-building-2"
     >
-      <USkeleton
+      <SkeletonList
         v-if="status === 'pending'"
-        class="h-24 w-full"
+        :rows="2"
       />
 
       <UAlert

@@ -34,7 +34,7 @@ watch(customer, (picked) => {
 
 const statusItems = ORDER_STATUSES.map(value => ({ value, label: orderStatusLabels[value] }))
 
-const { data: orders, status: listStatus } = await useAsyncData(
+const { data: orders, status: listStatus } = useLazyAsyncData(
   'pedidos',
   () => request(c => c.orders.$get({ query: {
     status: values.value.status,
@@ -46,7 +46,7 @@ const { data: orders, status: listStatus } = await useAsyncData(
   { watch: sources }
 )
 
-const { data: towns } = await useAsyncData(
+const { data: towns } = useLazyAsyncData(
   'localidades',
   async () => (await request(c => c.customers.towns.$get())).items,
   { default: () => [] }
@@ -121,9 +121,9 @@ const hasFilters = computed(() => Object.values(values.value).some(Boolean))
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonList
         v-if="listStatus === 'pending' && !orders"
-        class="h-32 w-full"
+        trailing
       />
 
       <UEmpty

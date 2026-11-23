@@ -11,7 +11,7 @@ const { search, searched, filters: { town }, values, page, pageSize, paging, sou
   filters: { town: textParam('localidad') }
 })
 
-const { data: customers, status } = await useAsyncData(
+const { data: customers, status } = useLazyAsyncData(
   'clientes',
   () => request(c => c.customers.$get({
     query: { q: searched.value || undefined, town: values.value.town, ...paging.value }
@@ -21,7 +21,7 @@ const { data: customers, status } = await useAsyncData(
 
 // Towns come from the Customers' Branches. The API has no list of towns yet (#33), so
 // this reads the first 200 Customers, which covers a distributor's routes for now.
-const { data: towns } = await useAsyncData('clientes-localidades', async () => {
+const { data: towns } = useLazyAsyncData('clientes-localidades', async () => {
   const { items } = await request(c => c.customers.$get({ query: { limit: '200' } }))
   const names = new Map<string, string>()
   for (const customer of items) {
@@ -63,6 +63,7 @@ function customerSubtitle(customer: Customer) {
             v-model="search"
             type="search"
             icon="i-lucide-search"
+            :loading="status === 'pending'"
             placeholder="Buscar por nombre o CUIT"
             aria-label="Buscar por nombre o CUIT"
             autocomplete="off"
@@ -86,9 +87,8 @@ function customerSubtitle(customer: Customer) {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonList
         v-if="status === 'pending' && !customers"
-        class="h-32 w-full"
       />
 
       <UEmpty

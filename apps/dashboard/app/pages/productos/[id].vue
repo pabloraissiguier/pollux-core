@@ -6,13 +6,13 @@ const { request } = useApi()
 const toast = useToast()
 const id = String(route.params.id)
 
-const { data: product, status } = await useAsyncData(
+const { data: product, status } = useLazyAsyncData(
   `producto-${id}`,
   () => request(c => c.products[':id'].$get({ param: { id } }))
 )
 
 // The latest 50 changes are plenty to see how a Price has moved.
-const { data: history, refresh: refreshHistory } = await useAsyncData(
+const { data: history, refresh: refreshHistory } = useLazyAsyncData(
   `producto-${id}-precios`,
   () => request(c => c.products[':id']['price-history'].$get({ param: { id }, query: { limit: '50' } }))
 )
@@ -21,7 +21,7 @@ const { data: history, refresh: refreshHistory } = await useAsyncData(
 const MOVEMENTS_STEP = 20
 const MOVEMENTS_MAX = 200
 const movementsLimit = ref(MOVEMENTS_STEP)
-const { data: movements, status: movementsStatus, refresh: refreshMovements } = await useAsyncData(
+const { data: movements, status: movementsStatus, refresh: refreshMovements } = useLazyAsyncData(
   `producto-${id}-movimientos`,
   () => request(c => c.stock.movements.$get({ query: { productId: id, limit: String(movementsLimit.value) } })),
   { watch: [movementsLimit] }
@@ -105,9 +105,9 @@ function changeSummary(change: { oldPrice: string | null, newPrice: string }) {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonDetail
         v-if="status === 'pending' && !product"
-        class="h-48 w-full"
+        :cards="3"
       />
 
       <UEmpty
@@ -212,9 +212,10 @@ function changeSummary(change: { oldPrice: string | null, newPrice: string }) {
               Movimientos de stock
             </h2>
 
-            <USkeleton
+            <SkeletonList
               v-if="movementsStatus === 'pending' && !movements"
-              class="h-16 w-full"
+              :rows="3"
+              trailing
             />
             <ul
               v-else-if="movements?.items.length"

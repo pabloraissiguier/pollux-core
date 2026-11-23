@@ -10,7 +10,7 @@ useSeoMeta({ title: 'Cuentas corrientes' })
 const { request } = useApi()
 const { page, pageSize, paging, sources } = useListQuery()
 
-const { data: balances, status, refresh } = await useAsyncData(
+const { data: balances, status, refresh } = useLazyAsyncData(
   'cuentas-corrientes',
   () => request(c => c.customers['with-balance'].$get({ query: paging.value })),
   { watch: sources }
@@ -55,9 +55,9 @@ async function pay(customer: { id: string, name: string }) {
           </div>
         </UCard>
 
-        <USkeleton
+        <SkeletonList
           v-if="status === 'pending' && !balances"
-          class="h-48 w-full"
+          trailing
         />
 
         <UEmpty

@@ -10,7 +10,7 @@ type PlanItem = CategoryPriceUpdatePlan['items'][number]
 const route = useRoute()
 const { request } = useApi()
 const toast = useToast()
-const { data: categories } = await useCategories()
+const { data: categories } = useCategories()
 const form = useTemplateRef('form')
 
 // `?categoria=` comes from the Categories screen, so the Category is already picked.

@@ -11,7 +11,7 @@ const toast = useToast()
 const { request } = useApi()
 const { renameActiveBusiness } = useActiveBusiness()
 
-const { data: business, status } = await useAsyncData('datos-del-negocio', () => request(c => c.business.$get()))
+const { data: business, status } = useLazyAsyncData('datos-del-negocio', () => request(c => c.business.$get()))
 
 const form = useTemplateRef('form')
 const state = reactive(businessFormState())
@@ -42,9 +42,9 @@ const { saving, onSubmit } = useFormSubmit<BusinessFormOutput>(form, async (data
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonForm
         v-if="status === 'pending' && !business"
-        class="h-96 w-full max-w-xl"
+        :fields="8"
       />
 
       <UForm

@@ -3,7 +3,7 @@ import type { Category } from '~/utils/products'
 
 useSeoMeta({ title: 'Categorías' })
 
-const { data: categories, status, refresh } = await useCategories()
+const { data: categories, status, refresh } = useCategories()
 
 const formOpen = ref(false)
 const renaming = ref<Category | null>(null)
@@ -56,9 +56,8 @@ async function onSaved() {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonList
         v-if="status === 'pending' && !categories.length"
-        class="h-32 w-full"
       />
 
       <UEmpty

@@ -4,7 +4,7 @@ import type { Purchase } from '~/utils/purchases'
 useSeoMeta({ title: 'Compras' })
 
 const { request } = useApi()
-const { data: suppliers } = await useSuppliers()
+const { data: suppliers } = useSuppliers()
 
 // The filters live in the URL, so coming back from a Purchase keeps them.
 const { filters: { supplierId, from, to }, values, page, pageSize, paging, sources } = useListQuery({
@@ -17,7 +17,7 @@ const backwardsRange = computed(() => {
   return !!from && !!to && from > to
 })
 
-const { data: purchases, status } = await useAsyncData(
+const { data: purchases, status } = useLazyAsyncData(
   'compras',
   () => backwardsRange.value
     ? Promise.resolve({ items: [] as Purchase[], total: 0 })
@@ -107,9 +107,9 @@ function purchaseSubtitle(purchase: Purchase) {
         title="La fecha desde no puede ser posterior a la fecha hasta"
       />
 
-      <USkeleton
+      <SkeletonList
         v-else-if="status === 'pending' && !purchases"
-        class="h-32 w-full"
+        trailing
       />
 
       <UEmpty

@@ -3,7 +3,7 @@ const route = useRoute()
 const { request } = useApi()
 const id = String(route.params.id)
 
-const { data: purchase, status } = await useAsyncData(
+const { data: purchase, status } = useLazyAsyncData(
   `compra-${id}`,
   () => request(c => c.purchases[':id'].$get({ param: { id } }))
 )
@@ -29,9 +29,8 @@ useSeoMeta({ title })
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonDetail
         v-if="status === 'pending' && !purchase"
-        class="h-48 w-full"
       />
 
       <UEmpty

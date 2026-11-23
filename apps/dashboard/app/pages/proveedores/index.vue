@@ -8,7 +8,7 @@ const { request } = useApi()
 // The search lives in the URL, so a reload or the back button keeps it.
 const { search, searched, page, pageSize, paging, sources } = useListQuery({ search: 'q' })
 
-const { data: suppliers, status, refresh } = await useAsyncData(
+const { data: suppliers, status, refresh } = useLazyAsyncData(
   'proveedores',
   () => request(c => c.suppliers.$get({ query: { q: searched.value || undefined, ...paging.value } })),
   { watch: sources }
@@ -58,6 +58,7 @@ function supplierSubtitle(supplier: Supplier) {
             v-model="search"
             type="search"
             icon="i-lucide-search"
+            :loading="status === 'pending'"
             placeholder="Buscar por nombre o CUIT"
             aria-label="Buscar por nombre o CUIT"
             autocomplete="off"
@@ -71,9 +72,8 @@ function supplierSubtitle(supplier: Supplier) {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonList
         v-if="status === 'pending' && !suppliers"
-        class="h-32 w-full"
       />
 
       <UEmpty

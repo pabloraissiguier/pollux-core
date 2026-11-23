@@ -1,0 +1,59 @@
+<!--
+  Shown before the app has started: while its code downloads, the session is restored and the
+  user's businesses load (GET /me). Plain HTML and CSS, since nothing else is loaded yet; it
+  follows the device's color scheme and the app's green.
+-->
+<div class="pollux-boot" role="status" aria-label="Cargando Pollux">
+  <svg class="pollux-boot__logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" />
+    <path d="M12 22V12" />
+    <polyline points="3.29 7 12 12 20.71 7" />
+    <path d="m7.5 4.27 9 5.15" />
+  </svg>
+  <span class="pollux-boot__name">Pollux</span>
+  <span class="pollux-boot__bar" aria-hidden="true"><span></span></span>
+</div>
+<style>
+  .pollux-boot {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: #fff;
+    color: #0f172a;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  .pollux-boot__logo { width: 40px; height: 40px; color: #00c16a; }
+  .pollux-boot__name { font-size: 18px; font-weight: 600; }
+  .pollux-boot__bar {
+    position: relative;
+    width: 96px;
+    height: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+  }
+  .pollux-boot__bar span {
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    border-radius: inherit;
+    background: #00c16a;
+    animation: pollux-boot-slide 1.1s ease-in-out infinite;
+  }
+  @keyframes pollux-boot-slide {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(250%); }
+  }
+  @media (prefers-color-scheme: dark) {
+    .pollux-boot { background: #020618; color: #f1f5f9; }
+    .pollux-boot__bar { background: #1e293b; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pollux-boot__bar span { animation: none; width: 100%; opacity: 0.6; }
+  }
+</style>

@@ -20,14 +20,14 @@ const toDay = computed(() => values.value.to)
 // The dates are `yyyy-mm-dd` strings, so they compare as text. A backwards range asks nothing.
 const backwardsRange = computed(() => !!fromDay.value && !!toDay.value && fromDay.value > toDay.value)
 
-const { data: current, refresh: refreshCurrent } = await useAsyncData(
+const { data: current, refresh: refreshCurrent } = useLazyAsyncData(
   `cliente-${customerId}-saldo`,
   () => request(c => c.customers[':id'].balance.$get({ param: { id: customerId } }))
 )
 
 useSeoMeta({ title: () => (current.value ? `Resumen de cuenta · ${current.value.customer.name}` : 'Resumen de cuenta') })
 
-const { data: statement, status, refresh: refreshStatement } = await useAsyncData(
+const { data: statement, status, refresh: refreshStatement } = useLazyAsyncData(
   `resumen-${customerId}`,
   () => backwardsRange.value
     ? Promise.resolve<Statement>({ items: [], total: 0 })
@@ -139,9 +139,9 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
           title="La fecha desde no puede ser posterior a la fecha hasta"
         />
 
-        <USkeleton
+        <SkeletonList
           v-else-if="status === 'pending' && !statement"
-          class="h-32 w-full"
+          trailing
         />
 
         <UEmpty

@@ -8,7 +8,7 @@ const id = String(route.params.id)
 
 // The Order, its Customer's Branches (a Pending Order can move between them) and the Available
 // stock of its Products, so a kept line warns as soon as it asks for more than there is.
-const { data, status } = await useAsyncData(`pedido-${id}-editar`, async () => {
+const { data, status } = useLazyAsyncData(`pedido-${id}-editar`, async () => {
   const order = await request(c => c.orders[':id'].$get({ param: { id } }))
   const productIds = [...new Set(order.lines.map(l => l.product.id))]
   const [customer, products] = await Promise.all([
@@ -62,9 +62,8 @@ async function onSaved(order: SavedOrder) {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonForm
         v-if="status === 'pending'"
-        class="h-48 w-full"
       />
       <UEmpty
         v-else-if="data"

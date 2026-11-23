@@ -16,7 +16,7 @@ const SEARCH_DELAY_MS = 250
 const RESULT_LIMIT = 50
 
 const { request } = useApi()
-const { data: categories } = await useCategories()
+const { data: categories } = useCategories()
 
 const search = ref('')
 const searchedText = ref('')
@@ -47,7 +47,7 @@ function searchNow(value: string) {
 
 const browsing = computed(() => !!searchedText.value || !!categoryId.value)
 
-const { data: products, status } = await useAsyncData(
+const { data: products, status } = useLazyAsyncData(
   'pedido-productos',
   () => browsing.value
     ? request(c => c.products.$get({
@@ -176,9 +176,10 @@ function onEnter(event: KeyboardEvent) {
       Buscá un producto o elegí una categoría.
     </p>
 
-    <USkeleton
+    <SkeletonList
       v-else-if="status === 'pending' && !products"
-      class="h-24 w-full"
+      :rows="3"
+      trailing
     />
 
     <UEmpty
