@@ -91,6 +91,10 @@ Copy `.env.example` to `.env` and fill in the Supabase values. The dev DB is rem
 
 `docker-compose.yml` has a local Postgres (port 5433) that **the test suites use** (`docker compose up -d db`): the API tests recreate a `pollux_test` database there and the dashboard's Playwright run recreates `pollux_e2e`; neither touches Supabase. Development still runs against Supabase. The dashboard uses port 3010 because 3000 is taken by other local projects.
 
+## Deployment (Vercel, POC)
+
+`vercel.json` deploys one Vercel project with two **services**: `dashboard` (Nuxt, public at `/`) and `api` (Hono, public at `/api`). Vercel passes the path through unchanged, so the API serves its routes under `/api` itself (`apps/api/src/index.ts`), and a dashboard built on Vercel calls `/api` on its own origin (no CORS needed). No service calls another server-side, so there are no bindings. Project env vars: `DATABASE_URL`, `DATABASE_POOLER_URL` (the API uses the transaction pooler on Vercel), `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (read by the dashboard at build time) and `ENABLE_EXPERIMENTAL_COREPACK=1` (so Vercel uses the pinned pnpm). Installs pass `--config.engine-strict=false`, since Vercel's Node 24 patch may not be the pinned one.
+
 ## Working on tickets
 
 - **Pick from the frontier.** Take an open ticket labelled `ready-for-agent` whose blockers are all closed. Read the ticket and its parent spec (#1 or #2) before starting; the spec holds the decisions the ticket depends on.

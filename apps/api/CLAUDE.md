@@ -7,7 +7,7 @@ This file covers the API app only. Product context, the domain and the repo layo
 Run from `apps/api/` (or from the root with `pnpm --filter api <script>`). Migrations are run from the root: see `db/CLAUDE.md`.
 
 ```bash
-pnpm dev                                  # Node server with reload, http://localhost:3001 (API_PORT), against Supabase
+pnpm dev                                  # Node server with reload, http://localhost:3001/api (API_PORT), against Supabase
 pnpm test                                 # whole suite; needs `docker compose up -d db` (root)
 pnpm exec vitest run test/me.test.ts      # one file
 pnpm exec vitest run -t "creates the profile"   # tests whose name matches
@@ -17,6 +17,8 @@ pnpm exec hono routes                     # list routes (loads src/index.ts)
 export TOKEN=$(pnpm --silent dev:token)   # Supabase access token for TEST_USER/TEST_PASS from .env
 ```
 
+`src/index.ts` (the Node server, the Hono CLI and Vercel) serves the app under **`/api`**: Vercel passes `/api/...` through to the `api` service unchanged. The tests call `createApp` directly, so their paths have no prefix.
+
 The suite builds its own app and never reads `DATABASE_URL`; the vitest config removes it from the test process. It uses `TEST_DATABASE_URL` (default `postgres://pollux:pollux@localhost:5433/pollux_test`), which must be local and name a `*test*` database, because every run drops and recreates it.
 
 ### Trying the app by hand
@@ -24,9 +26,9 @@ The suite builds its own app and never reads `DATABASE_URL`; the vitest config r
 - **In-process, against the local test DB** (preferred for writes). `API_AUTH_VERIFIER=test` selects the test verifier, where the bearer token is just a user id; pass the id through an env var:
   ```bash
   API_AUTH_VERIFIER=test DATABASE_URL=postgres://pollux:pollux@localhost:5433/pollux_test \
-    pnpm exec hono request /me -H "Authorization: Bearer $USER_ID"
+    pnpm exec hono request /api/me -H "Authorization: Bearer $USER_ID"
   ```
-- **Real sign-in against Supabase** (the manual check for auth): `pnpm dev`, then `export TOKEN=$(pnpm --silent dev:token)` and `curl localhost:3001/me -H "Authorization: Bearer $TOKEN"`. It answers with the Gio Pack business for the seeded `TEST_USER`.
+- **Real sign-in against Supabase** (the manual check for auth): `pnpm dev`, then `export TOKEN=$(pnpm --silent dev:token)` and `curl localhost:3001/api/me -H "Authorization: Bearer $TOKEN"`. It answers with the Gio Pack business for the seeded `TEST_USER`.
 
 ## Structure
 

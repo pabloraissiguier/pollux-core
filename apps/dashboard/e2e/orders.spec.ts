@@ -1,10 +1,10 @@
-import { dayInArgentina, expect, test, type Locator, type Page } from './fixtures'
+import { apiPath, dayInArgentina, expect, test, type Locator, type Page } from './fixtures'
 
 /** An Order's request bodies seen by the browser, to count the writes. */
 function watchOrderWrites(page: Page) {
   const writes: string[] = []
   page.on('request', (request) => {
-    const path = new URL(request.url()).pathname
+    const path = apiPath(request.url())
     if (path.startsWith('/orders') && request.method() !== 'GET' && request.method() !== 'OPTIONS') {
       writes.push(`${request.method()} ${path.replace(/[0-9a-f-]{36}/, ':id')}`)
     }

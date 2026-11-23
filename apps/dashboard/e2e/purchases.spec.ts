@@ -1,5 +1,5 @@
 import { createProduct } from './catalog'
-import { dayInArgentina, expect, test, type Page } from './fixtures'
+import { apiPath, dayInArgentina, expect, test, type Page } from './fixtures'
 
 /** Creates a Supplier through the Suppliers screen. */
 async function createSupplier(page: Page, supplier: { name: string, cuit?: string }) {
@@ -16,7 +16,7 @@ async function createSupplier(page: Page, supplier: { name: string, cuit?: strin
 function watchPurchaseWrites(page: Page) {
   const writes: string[] = []
   page.on('request', (request) => {
-    const path = new URL(request.url()).pathname
+    const path = apiPath(request.url())
     if (path.startsWith('/purchases') && request.method() !== 'GET' && request.method() !== 'OPTIONS') {
       writes.push(`${request.method()} ${path}`)
     }

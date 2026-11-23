@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "api": {
+      "root": "apps/api",
+      "framework": "hono",
+      "installCommand": "pnpm install --frozen-lockfile --config.engine-strict=false"
+    },
+    "dashboard": {
+      "root": "apps/dashboard",
+      "framework": "nuxtjs",
+      "installCommand": "pnpm install --frozen-lockfile --config.engine-strict=false"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": { "service": "api" }
+    },
+    {
+      "source": "/(.*)",
+      "destination": { "service": "dashboard" }
+    }
+  ]
+}
