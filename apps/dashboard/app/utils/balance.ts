@@ -1,4 +1,4 @@
-import { addMoney, balanceAdjustmentSchema, pastDaySchema } from '@pollux/contracts'
+import { addMoney, balanceAdjustmentSchema, openingBalanceSchema } from '@pollux/contracts'
 import type { BalanceEntryType, Money, PaymentMethod } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
 import { z } from 'zod'
@@ -102,21 +102,23 @@ export function balanceAfter(balance: Money, side: BalanceSide, amountInput: str
 
 /**
  * The "Saldo inicial" form: what the Customer owed (or had in their favor) before the app, and
- * the day it was taken, never in the future (#59 makes the API refuse it too; #62 moves the form
- * to the shared schema).
+ * the day it was taken, never in the future (the API's own rule and words).
  */
 export const openingBalanceFormSchema = z.object({
   side: balanceSideSchema,
   amount: paymentAmountInputSchema,
-  entryDate: pastDaySchema('La fecha del saldo inicial no puede ser futura')
+  entryDate: openingBalanceSchema.shape.entryDate
 })
 
-/** The "Ajustar saldo" form: a side, an amount, the required reason and its day, never in the future. */
+/**
+ * The "Ajustar saldo" form: a side, an amount, the required reason and its day, required here (the
+ * form starts at today) and never in the future (the API's own rule and words).
+ */
 export const balanceAdjustmentFormSchema = z.object({
   side: balanceSideSchema,
   amount: paymentAmountInputSchema,
   reason: balanceAdjustmentSchema.shape.reason,
-  entryDate: pastDaySchema('La fecha del ajuste no puede ser futura')
+  entryDate: balanceAdjustmentSchema.shape.entryDate.unwrap()
 })
 
 export interface ManualEntryFormState {

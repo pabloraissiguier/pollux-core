@@ -1,4 +1,4 @@
-import { daySchema, multiplyMoney, purchaseCreateSchema, purchaseLineSchema, sumMoney, unitCostSchema } from '@pollux/contracts'
+import { multiplyMoney, purchaseCreateSchema, purchaseLineSchema, sumMoney, unitCostSchema } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
 import { z } from 'zod'
 import type { ApiClient } from '~/composables/useApi'
@@ -58,11 +58,12 @@ export function purchaseFormState(): PurchaseFormState {
 
 /**
  * The new-Purchase form: what the API takes, with quantities typed as whole units ("1.200") and
- * unit costs typed the es-AR way. Its output is the body of `POST /purchases`.
+ * unit costs typed the es-AR way. Its output is the body of `POST /purchases`. The Purchase date
+ * is required here (the form starts at today) and, as in the API, never in the future.
  */
 export const purchaseFormSchema = z.object({
   supplierId: z.uuid({ error: 'Elegí un proveedor' }),
-  purchasedOn: daySchema,
+  purchasedOn: purchaseCreateSchema.shape.purchasedOn.unwrap(),
   invoiceNumber: purchaseCreateSchema.shape.invoiceNumber,
   notes: purchaseCreateSchema.shape.notes,
   lines: z

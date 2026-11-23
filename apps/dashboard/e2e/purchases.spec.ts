@@ -1,6 +1,12 @@
 import { createProduct } from './catalog'
 import { expect, test, type Page } from './fixtures'
 
+/** A day in Argentina as `yyyy-mm-dd`, `offset` days from today. */
+function dayInArgentina(offset = 0): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
+    .format(new Date(Date.now() + offset * 86_400_000))
+}
+
 /** Creates a Supplier through the Suppliers screen. */
 async function createSupplier(page: Page, supplier: { name: string, cuit?: string }) {
   await page.goto('/proveedores')
@@ -110,8 +116,18 @@ test('the owner registers a Purchase and sees On-hand stock rise', { tag: '@desk
   await expect(page.getByRole('status', { name: 'Total' })).toHaveText('$ 396.012,00')
   await page.getByRole('textbox', { name: 'Notas' }).fill('Llegó con el flete de la tarde')
 
-  // A double tap registers it once.
+  // It already happened: the date picker stops at today, and a future day typed anyway is refused
+  // in the form with the API's own words, before reaching it.
   const writes = watchPurchaseWrites(page)
+  const date = page.getByLabel('Fecha')
+  await expect(date).toHaveAttribute('max', dayInArgentina())
+  await date.fill(dayInArgentina(1))
+  await page.getByRole('button', { name: 'Registrar compra' }).click()
+  await expect(page.getByText('La fecha de compra no puede ser futura')).toBeVisible()
+  expect(writes).toEqual([])
+  await date.fill('2026-11-20')
+
+  // A double tap registers it once.
   await page.getByRole('button', { name: 'Registrar compra' }).dblclick()
   await expect(page).toHaveURL(/\/compras\/[0-9a-f-]{36}$/)
   expect(writes).toEqual(['POST /purchases'])

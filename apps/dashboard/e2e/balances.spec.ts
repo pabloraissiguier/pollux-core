@@ -73,6 +73,7 @@ test('the owner enters a Customer\'s Opening balance once, from the Customer pag
   await expect(modal.getByRole('radio', { name: 'Debe' })).toBeChecked()
   await modal.getByLabel('Importe').fill('2.500,50')
 
+  await expect(modal.getByLabel('Fecha')).toHaveAttribute('max', dayInArgentina())
   await modal.getByLabel('Fecha').fill(dayInArgentina(1))
   await modal.getByRole('button', { name: 'Guardar saldo inicial' }).click()
   await expect(modal).toContainText('La fecha del saldo inicial no puede ser futura')
@@ -180,7 +181,9 @@ test('the owner adjusts a Balance with a reason and sees it on the statement', {
   await expect(modal).toContainText('Saldo: $ 1.500,00 → $ 1.300,00')
   await modal.getByLabel('Motivo').fill('Descuento por pronto pago')
 
-  // It already happened: a future day is refused in the form, before reaching the API.
+  // It already happened: the date picker stops at today, and a future day is refused in the form,
+  // before reaching the API.
+  await expect(modal.getByLabel('Fecha')).toHaveAttribute('max', dayInArgentina())
   await modal.getByLabel('Fecha').fill(dayInArgentina(1))
   await modal.getByRole('button', { name: 'Guardar ajuste' }).click()
   await expect(modal).toContainText('La fecha del ajuste no puede ser futura')

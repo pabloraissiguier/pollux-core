@@ -93,9 +93,23 @@ describe('parseDecimalInput', () => {
     expect(parseDecimalInput('1.234.567,5')).toBe('1234567.5')
   })
 
-  it('takes a lone point as the decimal point, as the API writes amounts', () => {
+  it('reads points followed by groups of exactly three digits as thousands, as es-AR writes them', () => {
+    expect(parseDecimalInput('1.000')).toBe('1000')
+    expect(parseDecimalInput('12.500')).toBe('12500')
+    expect(parseDecimalInput('1.234.567')).toBe('1234567')
+  })
+
+  it('takes any other lone point as the decimal point, as the API writes amounts', () => {
+    expect(parseDecimalInput('1.50')).toBe('1.50')
+    expect(parseDecimalInput('1.5')).toBe('1.5')
     expect(parseDecimalInput('1234.50')).toBe('1234.50')
     expect(parseDecimalInput('1500')).toBe('1500')
+  })
+
+  it('keeps a point after a zero, or before more than three digits, as a decimal point', () => {
+    expect(parseDecimalInput('0.500')).toBe('0.500')
+    expect(parseDecimalInput('1.2345')).toBe('1.2345')
+    expect(parseDecimalInput('1234.567')).toBe('1234.567')
   })
 
   it('ignores spaces and leaves anything else for validation to reject', () => {
