@@ -2,7 +2,16 @@
  * How the dashboard shows values to people: es-AR money, dates and CUIT, and the Spanish label
  * of every enum. Pure functions, auto-imported by Nuxt, unit-tested in `test/format.test.ts`.
  */
-import type { Money, PaymentMethod, Percent, StockAdjustmentReason, VatCondition } from '@pollux/contracts'
+import type {
+  BalanceEntryType,
+  Money,
+  OrderStatus,
+  PaymentMethod,
+  Percent,
+  StockAdjustmentReason,
+  StockMovementType,
+  VatCondition
+} from '@pollux/contracts'
 
 /** Argentina's time zone, for timestamps. Calendar dates (`yyyy-mm-dd`) never go through one. */
 export const TIME_ZONE = 'America/Argentina/Buenos_Aires'
@@ -84,12 +93,6 @@ export function parseDecimalInput(input: string): string {
   const compact = input.replace(/\s/g, '')
   return compact.includes(',') ? compact.replace(/\./g, '').replace(',', '.') : compact
 }
-
-// Enums that only live in the DB schema so far (`@pollux/db`). Moving them to `@pollux/contracts`
-// is issue #30; until then, these types must match `db/src/schema`.
-export type OrderStatus = 'pending' | 'delivered' | 'cancelled'
-export type BalanceEntryType = 'order_delivered' | 'delivery_undone' | 'payment' | 'payment_voided' | 'opening_balance' | 'adjustment'
-export type StockMovementType = 'order_delivered' | 'delivery_undone' | 'purchase' | 'adjustment'
 
 /** Medio de pago. "Cuenta corriente" is not one: it means the delivery had no Payment (ADR-0001). */
 export const paymentMethodLabels: Record<PaymentMethod, string> = {

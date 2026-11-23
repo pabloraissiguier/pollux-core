@@ -1,10 +1,9 @@
 import { addMoney, balanceAdjustmentSchema, pastDaySchema } from '@pollux/contracts'
-import type { Money, PaymentMethod } from '@pollux/contracts'
+import type { BalanceEntryType, Money, PaymentMethod } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
 import { z } from 'zod'
 import type { ApiClient } from '~/composables/useApi'
 import { balanceEntryTypeLabels, formatMoney, todayInArgentina } from './format'
-import type { BalanceEntryType } from './format'
 import { paymentAmountInputSchema } from './payments'
 
 /** A Customer's Balance as the API returns it: `{ customer, balance }`. */
