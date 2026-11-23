@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, test, type Locator, type Page } from './fixtures'
 
 /** Tomorrow in Argentina as `yyyy-mm-dd`, the Delivery date a new Order starts with. */
 function tomorrowInArgentina(): string {
@@ -43,17 +43,18 @@ test('the owner takes an Order with Discounts on a phone, sees the live total an
 
   // A Product found by search, with its Price and Available stock.
   const picker = page.getByRole('region', { name: 'Agregar productos' })
-  await picker.getByRole('searchbox', { name: 'Buscar producto' }).fill('vaso')
-  const vasoRow = picker.getByRole('listitem').filter({ hasText: 'Vaso térmico 180 cc' })
+  await picker.getByRole('combobox', { name: 'Buscar producto' }).fill('vaso')
+  // A tap on the result adds it.
+  const vasoRow = picker.getByRole('option', { name: /Vaso térmico 180 cc/ })
   await expect(vasoRow).toContainText('$ 1.000,00')
   await expect(vasoRow).toContainText('Disponible 10')
-  await vasoRow.getByRole('button', { name: 'Agregar Vaso térmico 180 cc' }).click()
+  await vasoRow.click()
 
   // Another one by browsing its Category.
-  await picker.getByRole('searchbox', { name: 'Buscar producto' }).fill('')
+  await picker.getByRole('combobox', { name: 'Buscar producto' }).fill('')
   await picker.getByRole('button', { name: 'Categoría' }).click()
   await page.getByRole('option', { name: 'Descartables' }).click()
-  await picker.getByRole('button', { name: 'Agregar Bandeja 103' }).click()
+  await picker.getByRole('option', { name: /Bandeja 103/ }).click()
 
   const lines = page.getByRole('region', { name: 'Productos del pedido' })
   await lines.getByRole('button', { name: 'Sumar uno a Vaso térmico 180 cc' }).click()
@@ -106,6 +107,71 @@ test('the owner takes an Order with Discounts on a phone, sees the live total an
   await expect(page.getByText('Dejar en el depósito')).toBeVisible()
 })
 
+/** Presses Tab until `target` has focus, as someone at the keyboard would. */
+async function tabTo(page: Page, target: Locator) {
+  for (let presses = 0; presses < 30; presses++) {
+    if (await target.evaluate(element => element === document.activeElement)) return
+    await page.keyboard.press('Tab')
+  }
+  await expect(target).toBeFocused()
+}
+
+test('the owner takes a phone Order at the PC with the keyboard alone after picking the Customer', { tag: '@desktop' }, async ({ page, createOwner, signIn, createCustomer, callApi }) => {
+  const userId = await createOwner('Gio Pack')
+  await createCustomer(userId, { name: 'Kiosco La Esquina', branches: [{ address: 'Belgrano 50', city: 'Corral de Bustos' }] })
+  await callApi(userId, 'POST', '/products', { code: 'BAN-103', name: 'Bandeja 103', price: '500' })
+  await callApi(userId, 'POST', '/products', { code: 'VAS-180', name: 'Vaso térmico 180 cc', price: '1000' })
+  await callApi(userId, 'POST', '/products', { code: 'VAS-240', name: 'Vaso térmico 240 cc', price: '1200' })
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+
+  await page.goto('/pedidos/nuevo')
+  await page.getByRole('combobox', { name: 'Cliente' }).fill('kiosco')
+  await page.getByRole('option', { name: /Kiosco La Esquina/ }).click()
+  await expect(page.getByText('Belgrano 50, Corral de Bustos')).toBeVisible()
+
+  const picker = page.getByRole('region', { name: 'Agregar productos' })
+  const search = picker.getByRole('combobox', { name: 'Buscar producto' })
+  const lines = page.getByRole('region', { name: 'Productos del pedido' })
+  const writes = watchOrderWrites(page)
+  await tabTo(page, search)
+
+  // Enter right after typing adds the first result of that search, not of an older one.
+  await page.keyboard.type('bandeja')
+  await page.keyboard.press('Enter')
+  await expect(lines.getByRole('spinbutton', { name: 'Cantidad de Bandeja 103' })).toHaveValue('1')
+  await expect(search).toBeFocused()
+  // The text stays, selected: Enter again adds one more, typing starts the next search.
+  await page.keyboard.press('Enter')
+  await expect(lines.getByRole('spinbutton', { name: 'Cantidad de Bandeja 103' })).toHaveValue('2')
+
+  await page.keyboard.type('vaso')
+  const results = picker.getByRole('listbox', { name: 'Resultados' })
+  await expect(results.getByRole('option')).toHaveCount(2)
+  await expect(results.getByRole('option', { selected: true })).toContainText('Vaso térmico 180 cc')
+  await page.keyboard.press('ArrowDown')
+  await expect(results.getByRole('option', { selected: true })).toContainText('Vaso térmico 240 cc')
+  await page.keyboard.press('ArrowDown')
+  await expect(results.getByRole('option', { selected: true })).toContainText('Vaso térmico 240 cc')
+  await page.keyboard.press('ArrowUp')
+  await expect(results.getByRole('option', { selected: true })).toContainText('Vaso térmico 180 cc')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect(lines.getByRole('spinbutton', { name: 'Cantidad de Vaso térmico 240 cc' })).toHaveValue('1')
+  await expect(lines.getByRole('listitem').filter({ hasText: 'Vaso térmico 180 cc' })).toHaveCount(0)
+  await expect(search).toBeFocused()
+
+  // 2 × 500 + 1 × 1.200; none of those Enters saved the Order.
+  await expect(page.getByRole('status', { name: 'Total del pedido' })).toHaveText('$ 2.200,00')
+  expect(writes).toEqual([])
+  await tabTo(page, page.getByRole('button', { name: 'Guardar pedido' }))
+  await page.keyboard.press('Enter')
+  const saved = page.getByRole('dialog', { name: 'Pedido N° 1 guardado' })
+  await expect(saved).toBeVisible()
+  await expect(saved).toContainText('$ 2.200,00')
+  expect(writes).toEqual(['POST /orders'])
+})
+
 test('the owner edits a Pending Order: kept lines keep their price, new lines take the current one', async ({ page, createOwner, signIn, createCustomer, callApi }) => {
   const userId = await createOwner('Gio Pack')
   const customerId = await createCustomer(userId, { name: 'Kiosco La Esquina', branches: [{ address: 'Belgrano 50', city: 'Corral de Bustos' }] })
@@ -143,8 +209,8 @@ test('the owner edits a Pending Order: kept lines keep their price, new lines ta
   await expect(vasoLine).toContainText('Sin stock suficiente: el disponible quedaría en -1')
 
   const picker = page.getByRole('region', { name: 'Agregar productos' })
-  await picker.getByRole('searchbox', { name: 'Buscar producto' }).fill('bandeja')
-  await picker.getByRole('button', { name: 'Agregar Bandeja 103' }).click()
+  await picker.getByRole('combobox', { name: 'Buscar producto' }).fill('bandeja')
+  await picker.getByRole('option', { name: /Bandeja 103/ }).click()
   await expect(lines.getByRole('listitem').filter({ hasText: 'Bandeja 103' })).toContainText('$ 600,00 c/u (precio actual)')
   await page.getByRole('textbox', { name: 'Descuento del pedido' }).fill('10')
   // 3 × 1.000 (kept price) + 1 × 600 (today's Price) = 3.600, less 10 %.
