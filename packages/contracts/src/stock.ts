@@ -50,3 +50,34 @@ export const stockMovementListQuerySchema = paginationSchema.extend({
   productId,
 })
 export type StockMovementListQuery = z.input<typeof stockMovementListQuerySchema>
+
+/** Stock shortages: Products with negative Available stock, largest shortfall first. */
+export const stockShortageListQuerySchema = paginationSchema
+export type StockShortageListQuery = z.input<typeof stockShortageListQuerySchema>
+
+/**
+ * A Product whose Available stock is below zero: `shortfall` (`-available`) units are missing to
+ * serve every Pending Order, and `orders` are the Pending Orders with a line for it, each with the
+ * quantity of the Product it asks for.
+ */
+export const stockShortageSchema = z.object({
+  product: z.object({ id: z.uuid(), code: z.string(), name: z.string() }),
+  stock: z.object({ onHand: z.number().int(), reserved: z.number().int(), available: z.number().int() }),
+  shortfall: z.number().int().positive(),
+  orders: z.array(z.object({
+    id: z.uuid(),
+    number: z.number().int(),
+    deliveryDate: z.iso.date(),
+    customer: z.object({ id: z.uuid(), name: z.string() }),
+    branch: z.object({ city: z.string() }),
+    quantity: z.number().int().positive(),
+  })),
+})
+export type StockShortage = z.infer<typeof stockShortageSchema>
+
+/** The answer of `GET /stock/shortages`. */
+export const stockShortageListSchema = z.object({
+  items: z.array(stockShortageSchema),
+  total: z.number().int(),
+})
+export type StockShortageList = z.infer<typeof stockShortageListSchema>

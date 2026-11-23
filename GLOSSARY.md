@@ -151,6 +151,10 @@ Units that Pending Orders have committed but that are still in the warehouse.
 **Stock disponible (Available stock)**:
 On-hand stock minus Reserved stock: what can still be promised to new Orders. It can go negative; the app warns but does not block.
 
+**Stock a reponer (Stock shortage)**:
+A Product whose Available stock is below zero. Its **shortfall** (_Faltan_) is the units missing to serve every Pending Order, `-available`. Delivered and Cancelled Orders never count.
+_Avoid_: Sin stock (on its own: it also describes On-hand stock at zero)
+
 **Movimiento de stock (Stock movement)**:
 One recorded change to On-hand stock, with its cause: a Delivered Order, an undone delivery, a Purchase or a Stock adjustment.
 _Avoid_: Movimiento (on its own)
