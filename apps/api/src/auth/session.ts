@@ -22,15 +22,19 @@ export function session(verifyToken: AuthVerifier) {
     const userId = token ? await verifyToken(token) : null
     if (!userId) throw unauthorized()
 
+    // Sent together, so they cost one round trip to the DB rather than two: postgres-js pipelines
+    // them on one connection. The memberships don't depend on the new `profiles` row, since a
+    // user who has just been created has none yet.
     const db = c.var.db
-    await db.insert(profiles).values({ id: userId }).onConflictDoNothing()
-
-    const memberships = await db
-      .select({ id: businesses.id, name: businesses.name, role: businessMembers.role })
-      .from(businessMembers)
-      .innerJoin(businesses, eq(businesses.id, businessMembers.businessId))
-      .where(eq(businessMembers.profileId, userId))
-      .orderBy(asc(businesses.name), asc(businesses.id))
+    const [, memberships] = await Promise.all([
+      db.insert(profiles).values({ id: userId }).onConflictDoNothing(),
+      db
+        .select({ id: businesses.id, name: businesses.name, role: businessMembers.role })
+        .from(businessMembers)
+        .innerJoin(businesses, eq(businesses.id, businessMembers.businessId))
+        .where(eq(businessMembers.profileId, userId))
+        .orderBy(asc(businesses.name), asc(businesses.id)),
+    ])
 
     const header = businessHeader.safeParse(c.req.header(BUSINESS_HEADER))
     if (!header.success) throw validationError(fieldErrors(header.error, BUSINESS_HEADER))

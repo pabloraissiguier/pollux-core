@@ -4,7 +4,9 @@ const BUSINESS_FREE = new Set(['/login', '/negocio'])
 /**
  * Signed-out users go to `/login`, which sends them back where they were afterwards. Signed-in
  * users need an active business: the first navigation loads theirs (`GET /me`) and sends them to
- * the picker when they have several and this device hasn't chosen one yet.
+ * the picker when they have several and this device hasn't chosen one yet. When this device has
+ * already chosen one, the page opens with it at once and `/me` loads alongside, so the page's
+ * own data doesn't wait behind `/me`.
  */
 export default defineNuxtRouteMiddleware(async (to) => {
   const { signedIn } = useAuth()
@@ -17,8 +19,21 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo(withReturnPath('/login', to.fullPath))
   }
 
-  const { businesses, loadBusinesses } = useActiveBusiness()
-  if (businesses.value || BUSINESS_FREE.has(to.path)) return
+  const { businesses, activeBusinessId, loadBusinesses, restoreChoice } = useActiveBusiness()
+  if (businesses.value || activeBusinessId.value || BUSINESS_FREE.has(to.path)) return
+
+  const userId = await useAuth().userId()
+  if (userId && restoreChoice(userId)) {
+    const router = useRouter()
+    // The API client already shows errors and redirects on a 401 or 403.
+    loadBusinesses({ returnTo: to.fullPath })
+      .then(async (chosen) => {
+        if (!chosen) await router.replace(withReturnPath('/negocio', router.currentRoute.value.fullPath))
+      })
+      .catch(() => {})
+    return
+  }
+
   try {
     if (!await loadBusinesses({ navigate: false, returnTo: to.fullPath })) {
       return navigateTo(withReturnPath('/negocio', to.fullPath))
