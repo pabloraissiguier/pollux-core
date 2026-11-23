@@ -225,16 +225,11 @@ const { saving, onSubmit } = useFormSubmit<OrderFormOutput>(form, async (data, r
                 </div>
 
                 <!-- A warning, never a block: the Order is taken even when stock is short. -->
-                <p
+                <OrderStockWarning
                   v-if="(availableAfter(line) ?? 0) < 0"
-                  class="flex items-center gap-1.5 text-sm text-warning"
-                >
-                  <UIcon
-                    name="i-lucide-triangle-alert"
-                    class="size-4 shrink-0"
-                  />
-                  Sin stock suficiente: el disponible quedaría en {{ formatUnits(availableAfter(line)!) }}
-                </p>
+                  :available="availableAfter(line)!"
+                  projected
+                />
               </li>
             </ul>
           </UFormField>

@@ -13,6 +13,27 @@ const { data: order, status } = await useAsyncData(
 
 useSeoMeta({ title: () => (order.value ? `Pedido N° ${order.value.number}` : 'Pedido') })
 
+// The Available stock of a Pending Order's Products, so a line whose Product is short warns. The
+// lines carry only the Product's id, Code and name. Delivered and Cancelled Orders reserve nothing,
+// so they need none; it reloads when the status changes (delivered, or the delivery undone).
+const { data: available } = await useAsyncData(
+  `pedido-${id}-disponible`,
+  async () => {
+    if (order.value?.status !== 'pending') return {}
+    const productIds = [...new Set(order.value.lines.map(l => l.product.id))]
+    const products = await Promise.all(productIds.map(productId => request(c => c.products[':id'].$get({ param: { id: productId } }))))
+    return Object.fromEntries(products.map(p => [p.id, p.stock.available]))
+  },
+  { lazy: true, watch: [() => order.value?.status] }
+)
+
+/** The Available stock of a Pending Order's line's Product when it is short, else nothing. */
+function shortAvailable(productId: string): number | undefined {
+  if (order.value?.status !== 'pending') return undefined
+  const value = available.value?.[productId]
+  return value !== undefined && value < 0 ? value : undefined
+}
+
 const confirming = ref(false)
 const cancelling = ref(false)
 const delivering = ref(false)
@@ -182,15 +203,21 @@ async function undoDelivery() {
               <li
                 v-for="line in order.lines"
                 :key="line.id"
-                class="flex items-start justify-between gap-3 py-3"
+                class="flex flex-col gap-2 py-3"
               >
-                <span class="flex min-w-0 flex-col">
-                  <span class="font-medium text-highlighted">{{ line.product.name }}</span>
-                  <span class="text-sm text-muted tabular-nums">
-                    {{ formatUnits(line.quantity) }} × {{ formatMoney(line.unitPrice) }}<template v-if="hasDiscount(line.discountPercent)"> · Descuento {{ formatPercent(line.discountPercent) }}</template>
+                <div class="flex items-start justify-between gap-3">
+                  <span class="flex min-w-0 flex-col">
+                    <span class="font-medium text-highlighted">{{ line.product.name }}</span>
+                    <span class="text-sm text-muted tabular-nums">
+                      {{ formatUnits(line.quantity) }} × {{ formatMoney(line.unitPrice) }}<template v-if="hasDiscount(line.discountPercent)"> · Descuento {{ formatPercent(line.discountPercent) }}</template>
+                    </span>
                   </span>
-                </span>
-                <span class="shrink-0 font-medium text-highlighted tabular-nums">{{ formatMoney(line.subtotal) }}</span>
+                  <span class="shrink-0 font-medium text-highlighted tabular-nums">{{ formatMoney(line.subtotal) }}</span>
+                </div>
+                <OrderStockWarning
+                  v-if="shortAvailable(line.product.id) !== undefined"
+                  :available="shortAvailable(line.product.id)!"
+                />
               </li>
             </ul>
           </section>
