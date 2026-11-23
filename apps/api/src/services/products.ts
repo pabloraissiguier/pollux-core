@@ -20,7 +20,9 @@ type ValidPriceHistoryQuery = z.output<typeof priceHistoryQuerySchema>
 
 /**
  * Stock reservado: the quantities on lines of Pending Orders for the Product in the outer query.
- * Derived on every read, never stored.
+ * Derived on every read, never stored. Its columns must be table-qualified, so it only works in a
+ * select that joins another table; `listStockShortages` in `services/stock.ts` applies the same
+ * rule as an aggregated join instead. Change both together.
  */
 export function reservedStock() {
   return sql<number>`(
