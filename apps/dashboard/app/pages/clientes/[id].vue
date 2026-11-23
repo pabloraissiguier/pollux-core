@@ -34,7 +34,7 @@ const { data: recentPayments, refresh: refreshPayments } = await useAsyncData(
   () => request(c => c.payments.$get({ query: { customerId: id, limit: String(RECENT_PAYMENTS) } }))
 )
 
-const { items: balanceActions, kind: entryKind, open: entryOpen, saved: onEntrySaved } = await useBalanceEntryActions(id, () => refreshBalance())
+const { items: balanceActions, kind: entryKind, open: entryOpen, saved: onEntrySaved } = useBalanceEntryActions(() => balance.value?.hasOpeningBalance, () => refreshBalance())
 
 const paying = ref(false)
 

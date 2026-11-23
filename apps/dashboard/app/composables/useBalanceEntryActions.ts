@@ -3,13 +3,11 @@ import type { BalanceEntryKind } from '~/utils/balance'
 
 /**
  * The manual Balance entries a Customer's page offers under "Más acciones": "Saldo inicial"
- * only while the Customer has none, and "Ajustar saldo". Holds which `BalanceEntryModal` is
- * open; `onSaved` refreshes what the page shows, and this refreshes whether an Opening balance
- * exists when one was just entered.
+ * only while the Customer's Balance says they have none (`hasOpeningBalance`, unknown while it
+ * loads), and "Ajustar saldo". Holds which `BalanceEntryModal` is open; `onSaved` refreshes what
+ * the page shows, the Balance included, which then carries `hasOpeningBalance: true`.
  */
-export async function useBalanceEntryActions(customerId: string, onSaved: () => void) {
-  const { data: hasOpeningBalance, refresh: refreshOpeningBalance } = await useHasOpeningBalance(customerId)
-
+export function useBalanceEntryActions(hasOpeningBalance: MaybeRefOrGetter<boolean | undefined>, onSaved: () => void) {
   const kind = ref<BalanceEntryKind>('adjustment')
   const open = ref(false)
 
@@ -19,16 +17,11 @@ export async function useBalanceEntryActions(customerId: string, onSaved: () => 
   }
 
   const items = computed<DropdownMenuItem[]>(() => [
-    ...(hasOpeningBalance.value === false
+    ...(toValue(hasOpeningBalance) === false
       ? [{ label: 'Saldo inicial', icon: 'i-lucide-file-spreadsheet', onSelect: () => start('opening') }]
       : []),
     { label: 'Ajustar saldo', icon: 'i-lucide-scale', onSelect: () => start('adjustment') }
   ])
 
-  function saved() {
-    onSaved()
-    if (kind.value === 'opening') refreshOpeningBalance()
-  }
-
-  return { items, kind, open, saved }
+  return { items, kind, open, saved: onSaved }
 }

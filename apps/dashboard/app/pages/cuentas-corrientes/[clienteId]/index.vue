@@ -64,7 +64,7 @@ function onBalanceChanged() {
   refreshStatement()
 }
 
-const { items: entryActions, kind: entryKind, open: entryOpen, saved: onEntrySaved } = await useBalanceEntryActions(customerId, onBalanceChanged)
+const { items: entryActions, kind: entryKind, open: entryOpen, saved: onEntrySaved } = useBalanceEntryActions(() => current.value?.hasOpeningBalance, onBalanceChanged)
 
 // The print view prints the range on screen.
 const moreActions = computed(() => [
