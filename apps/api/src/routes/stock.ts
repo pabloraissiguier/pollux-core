@@ -1,12 +1,13 @@
-import { initialCountSchema, stockAdjustmentSchema, stockMovementListQuerySchema } from '@pollux/contracts'
+import { initialCountSchema, stockAdjustmentSchema, stockMovementListQuerySchema, stockShortageListQuerySchema } from '@pollux/contracts'
 import { Hono } from 'hono'
 import { requireBusiness } from '../auth/session'
 import type { AppEnv } from '../context'
-import { adjustStock, listStockMovements, recordInitialCount } from '../services/stock'
+import { adjustStock, listStockMovements, listStockShortages, recordInitialCount } from '../services/stock'
 import { validate } from '../validator'
 
 /**
- * Stock: Stock adjustments, the bulk initial count and each Product's Stock movements.
+ * Stock: Stock adjustments, the bulk initial count, each Product's Stock movements and the Stock
+ * shortages (Products with negative Available stock, with the Pending Orders that reserve them).
  * On-hand, Reserved and Available stock are on the Product itself (`/products`).
  */
 export const stockRoutes = new Hono<AppEnv>()
@@ -21,4 +22,7 @@ export const stockRoutes = new Hono<AppEnv>()
   })
   .get('/movements', validate('query', stockMovementListQuerySchema), async (c) => {
     return c.json(await listStockMovements(c.var.db, c.var.businessId, c.req.valid('query')), 200)
+  })
+  .get('/shortages', validate('query', stockShortageListQuerySchema), async (c) => {
+    return c.json(await listStockShortages(c.var.db, c.var.businessId, c.req.valid('query')), 200)
   })

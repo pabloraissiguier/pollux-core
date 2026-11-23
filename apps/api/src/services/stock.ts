@@ -1,5 +1,5 @@
-import type { initialCountSchema, stockAdjustmentSchema, stockMovementListQuerySchema } from '@pollux/contracts'
-import { orders, products, profiles, purchases, stockMovements } from '@pollux/db/schema'
+import type { initialCountSchema, StockShortageList, stockAdjustmentSchema, stockMovementListQuerySchema, stockShortageListQuerySchema } from '@pollux/contracts'
+import { branches, customers, orderLines, orders, products, profiles, purchases, stockMovements } from '@pollux/db/schema'
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { z } from 'zod'
 import type { Database, Transaction } from '../db'
@@ -8,6 +8,7 @@ import { getProduct, isProduct, productNotFound } from './products'
 type ValidStockAdjustment = z.output<typeof stockAdjustmentSchema>
 type ValidInitialCount = z.output<typeof initialCountSchema>
 type ValidStockMovementListQuery = z.output<typeof stockMovementListQuerySchema>
+type ValidStockShortageListQuery = z.output<typeof stockShortageListQuerySchema>
 
 /** A Stock movement to record; its type says which of the cause fields it carries. */
 export type StockMovementInput = {
@@ -152,4 +153,100 @@ export async function listStockMovements(db: Database, businessId: string, query
     })),
     total: counted!.total,
   }
+}
+
+/**
+ * Stock shortages: every Product (Inactive ones included) whose Available stock is below zero,
+ * largest shortfall first (then by Code), each with the Pending Orders that have a line for it.
+ */
+export async function listStockShortages(db: Database, businessId: string, query: ValidStockShortageListQuery): Promise<StockShortageList> {
+  const { limit, offset } = query
+  // Reserved stock by the same rule as `reservedStock()` (lines of Pending Orders), aggregated
+  // once and joined, rather than as a correlated subquery per Product.
+  const pendingLines = db
+    .select({
+      productId: orderLines.productId,
+      quantity: sql<number>`sum(${orderLines.quantity})::int`.as('quantity'),
+    })
+    .from(orderLines)
+    .innerJoin(orders, and(eq(orders.businessId, businessId), eq(orders.id, orderLines.orderId)))
+    .where(and(eq(orderLines.businessId, businessId), eq(orders.status, 'pending')))
+    .groupBy(orderLines.productId)
+    .as('pending_lines')
+  const reserved = sql<number>`coalesce(${pendingLines.quantity}, 0)`.mapWith(Number)
+  const shortfall = sql<number>`${reserved} - ${products.stockOnHand}`
+  const where = and(eq(products.businessId, businessId), sql`${shortfall} > 0`)
+
+  const [rows, [counted]] = await Promise.all([
+    db
+      .select({
+        id: products.id,
+        code: products.code,
+        name: products.name,
+        onHand: products.stockOnHand,
+        reserved,
+      })
+      .from(products)
+      .leftJoin(pendingLines, eq(pendingLines.productId, products.id))
+      .where(where)
+      .orderBy(desc(shortfall), asc(products.code), asc(products.id))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ total: count() })
+      .from(products)
+      .leftJoin(pendingLines, eq(pendingLines.productId, products.id))
+      .where(where),
+  ])
+
+  const reserving = await pendingOrdersFor(db, businessId, rows.map(r => r.id))
+
+  return {
+    items: rows.map(r => ({
+      product: { id: r.id, code: r.code, name: r.name },
+      stock: { onHand: r.onHand, reserved: r.reserved, available: r.onHand - r.reserved },
+      shortfall: r.reserved - r.onHand,
+      orders: reserving
+        .filter(o => o.productId === r.id)
+        .map(o => ({
+          id: o.id,
+          number: o.number,
+          deliveryDate: o.deliveryDate,
+          customer: { id: o.customerId, name: o.customerName },
+          branch: { city: o.branchCity },
+          quantity: o.quantity,
+        })),
+    })),
+    total: counted!.total,
+  }
+}
+
+/**
+ * The Pending Orders with a line for any of the given Products, one row per Order and Product
+ * (an Order with two lines of a Product sums them), soonest Delivery date first.
+ */
+async function pendingOrdersFor(db: Database, businessId: string, productIds: string[]) {
+  if (productIds.length === 0) return []
+  return db
+    .select({
+      productId: orderLines.productId,
+      id: orders.id,
+      number: orders.number,
+      deliveryDate: orders.deliveryDate,
+      customerId: customers.id,
+      customerName: customers.name,
+      branchCity: branches.city,
+      quantity: sql<number>`sum(${orderLines.quantity})::int`.mapWith(Number),
+    })
+    .from(orderLines)
+    .innerJoin(orders, and(eq(orders.businessId, businessId), eq(orders.id, orderLines.orderId)))
+    .innerJoin(customers, and(eq(customers.businessId, businessId), eq(customers.id, orders.customerId)))
+    .innerJoin(branches, and(eq(branches.businessId, businessId), eq(branches.id, orders.branchId)))
+    .where(and(
+      eq(orderLines.businessId, businessId),
+      inArray(orderLines.productId, productIds),
+      eq(orders.status, 'pending'),
+    ))
+    .groupBy(orderLines.productId, orders.id, customers.id, branches.id)
+    .orderBy(asc(orders.deliveryDate), asc(orders.number))
 }
