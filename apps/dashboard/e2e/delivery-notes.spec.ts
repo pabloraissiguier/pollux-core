@@ -1,8 +1,8 @@
-import { expect, test } from './fixtures'
+import { dayInArgentina, expect, test } from './fixtures'
 
 /** Today in Argentina as `dd/mm/yyyy`, the day the Delivery note is issued. */
 function issuedToday(): string {
-  const [y, m, d] = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date()).split('-')
+  const [y, m, d] = dayInArgentina().split('-')
   return `${d}/${m}/${y}`
 }
 

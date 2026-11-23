@@ -1,9 +1,4 @@
-import { expect, test } from './fixtures'
-
-/** Today in Argentina as `yyyy-mm-dd`, the Delivered date a delivery starts with. */
-function todayInArgentina(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
-}
+import { dayInArgentina, expect, test } from './fixtures'
 
 /** `yyyy-mm-dd` → `dd/mm/yyyy`, as the app shows it. */
 function shown(day: string): string {
@@ -32,7 +27,7 @@ async function orderFor(callApi: CallApi, userId: string, customer: CustomerWith
 
 test('the owner follows the reparto by town and delivers an Order on account straight from the list', { tag: '@desktop' }, async ({ page, createOwner, signIn, callApi }) => {
   const userId = await createOwner('Gio Pack')
-  const today = todayInArgentina()
+  const today = dayInArgentina()
   const vaso = await callApi(userId, 'POST', '/products', { code: 'VAS-180', name: 'Vaso térmico 180 cc', price: '1000' })
   const kiosco = await customerIn(callApi, userId, 'Kiosco La Esquina', 'Corral de Bustos')
   const almacen = await customerIn(callApi, userId, 'Almacén Don Pepe', 'Corral de Bustos')
@@ -80,7 +75,7 @@ test('the owner follows the reparto by town and delivers an Order on account str
 
 test('the owner delivers an Order on account, checks the Balance and statement, and undoes the delivery', async ({ page, createOwner, signIn, callApi }) => {
   const userId = await createOwner('Gio Pack')
-  const today = todayInArgentina()
+  const today = dayInArgentina()
   const vaso = await callApi(userId, 'POST', '/products', { code: 'VAS-180', name: 'Vaso térmico 180 cc', price: '1234.50' })
   const kiosco = await customerIn(callApi, userId, 'Kiosco La Esquina', 'Corral de Bustos')
   await callApi(userId, 'POST', `/customers/${kiosco.id}/opening-balance`, { amount: '500.00', entryDate: '2026-01-10' })

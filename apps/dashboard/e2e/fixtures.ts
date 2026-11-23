@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { test as base, expect } from '@playwright/test'
-import type { CustomerCreateInput } from '@pollux/contracts'
+import { todayInCordoba, type CustomerCreateInput } from '@pollux/contracts'
 import postgres from 'postgres'
 import { E2E_API_PORT, e2eDatabaseUrl } from './env'
 
@@ -91,3 +91,13 @@ export const test = base.extend<Fixtures>({
 })
 
 export { expect }
+
+/**
+ * A day in Argentina as `yyyy-mm-dd`, `offset` calendar days from today. Today comes from
+ * `todayInCordoba` in `@pollux/contracts`, the rule the past-day validators use, so a test's "today"
+ * and "tomorrow" are the days those validators accept and reject.
+ */
+export function dayInArgentina(offset = 0): string {
+  const [y, m, d] = todayInCordoba().split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d! + offset)).toISOString().slice(0, 10)
+}

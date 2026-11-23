@@ -1,11 +1,5 @@
 import { createProduct } from './catalog'
-import { expect, test, type Page } from './fixtures'
-
-/** A day in Argentina as `yyyy-mm-dd`, `offset` days from today. */
-function dayInArgentina(offset = 0): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
-    .format(new Date(Date.now() + offset * 86_400_000))
-}
+import { dayInArgentina, expect, test, type Page } from './fixtures'
 
 /** Creates a Supplier through the Suppliers screen. */
 async function createSupplier(page: Page, supplier: { name: string, cuit?: string }) {
