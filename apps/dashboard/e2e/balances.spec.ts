@@ -59,6 +59,12 @@ test('the owner enters a Customer\'s Opening balance once, from the Customer pag
   await signIn(userId)
   await expect(page).toHaveURL('/')
 
+  // Whether it's offered comes from the Balance, not from reading the Statement.
+  const statementReads: string[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === `/customers/${kiosco.id}/statement`) statementReads.push(request.url())
+  })
+
   await page.goto(`/clientes/${kiosco.id}`)
   await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 0,00')
   await page.getByRole('button', { name: 'Más acciones' }).click()
@@ -85,6 +91,7 @@ test('the owner enters a Customer\'s Opening balance once, from the Customer pag
   await expect(page.getByRole('menuitem', { name: 'Ajustar saldo' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Saldo inicial' })).toHaveCount(0)
   await page.keyboard.press('Escape')
+  expect(statementReads).toEqual([])
 
   await page.getByRole('link', { name: 'Ver resumen de cuenta' }).click()
   const entries = page.getByRole('list', { name: 'Movimientos de cuenta' }).getByRole('listitem')
