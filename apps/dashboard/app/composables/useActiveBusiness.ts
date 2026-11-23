@@ -27,6 +27,12 @@ export function useActiveBusiness() {
   const selectBusiness = (id: string) => setActive(id)
   const forgetBusiness = () => setActive(null)
 
+  /** After the owner renames the active business (Datos del negocio), without loading `/me` again. */
+  function renameActiveBusiness(name: string) {
+    const active = businesses.value?.find(b => b.id === activeBusinessId.value)
+    if (active) active.name = name
+  }
+
   /**
    * Loads the user's businesses and restores this device's choice. Returns false when the user
    * still has to pick one (several and none chosen here, or none at all), so the caller can send
@@ -52,5 +58,5 @@ export function useActiveBusiness() {
     activeBusinessId.value = null
   }
 
-  return { businesses, activeBusinessId, activeBusiness, hasSeveral, selectBusiness, forgetBusiness, loadBusinesses, forgetSession }
+  return { businesses, activeBusinessId, activeBusiness, hasSeveral, selectBusiness, forgetBusiness, renameActiveBusiness, loadBusinesses, forgetSession }
 }

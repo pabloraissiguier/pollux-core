@@ -9,7 +9,7 @@ useSeoMeta({ title: 'Datos del negocio' })
 
 const toast = useToast()
 const { request } = useApi()
-const { businesses, activeBusinessId } = useActiveBusiness()
+const { renameActiveBusiness } = useActiveBusiness()
 
 const { data: business, status } = await useAsyncData('datos-del-negocio', () => request(c => c.business.$get()))
 
@@ -26,8 +26,7 @@ const vatConditions = [
 const { saving, onSubmit } = useFormSubmit<BusinessFormOutput>(form, async (data, request) => {
   business.value = await request(c => c.business.$patch({ json: data }))
   // The sidebar shows the business by name.
-  const listed = businesses.value?.find(b => b.id === activeBusinessId.value)
-  if (listed) listed.name = business.value.name
+  renameActiveBusiness(business.value.name)
   toast.add({ title: 'Datos del negocio guardados', color: 'success', icon: 'i-lucide-check' })
 })
 </script>

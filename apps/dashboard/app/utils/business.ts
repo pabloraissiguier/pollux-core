@@ -3,7 +3,7 @@ import type { VatCondition } from '@pollux/contracts'
 import { z } from 'zod'
 import { formatDate, maskCuit, vatConditionLabels } from './format'
 
-/** Datos del negocio as the API sends them on a Delivery note: every field but `name` may be empty. */
+/** Datos del negocio as the API sends them (`GET /business`, the issuer on a Delivery note): every field but `name` may be empty. */
 export interface BusinessData {
   name: string
   legalName: string | null
