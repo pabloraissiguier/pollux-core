@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { businessAddress, issuerLines } from '../app/utils/business'
+import { businessAddress, businessFormSchema, businessFormState, issuerLines } from '../app/utils/business'
 import type { BusinessData } from '../app/utils/business'
 
 const EMPTY: BusinessData = {
@@ -37,6 +37,27 @@ describe('issuerLines', () => {
       { label: 'CUIT', value: '30-71234567-1' },
       { label: 'Condición frente al IVA', value: 'Monotributo' },
       { label: 'Inicio de actividades', value: '01/03/2015' }
+    ])
+  })
+})
+
+describe('businessFormSchema', () => {
+  it('sends every blank optional field as null, so saving clears it', () => {
+    const result = businessFormSchema.safeParse(businessFormState(EMPTY))
+    expect(result.success && result.data).toEqual(EMPTY)
+  })
+
+  it('formats the CUIT and keeps a past Inicio de actividades', () => {
+    const state = { ...businessFormState(EMPTY), cuit: '30712345671', activityStartDate: '2015-03-01' }
+    const result = businessFormSchema.safeParse(state)
+    expect(result.success && result.data).toMatchObject({ cuit: '30-71234567-1', activityStartDate: '2015-03-01' })
+  })
+
+  it('requires the name and refuses a future Inicio de actividades', () => {
+    const result = businessFormSchema.safeParse({ ...businessFormState(EMPTY), name: ' ', activityStartDate: '2999-01-01' })
+    expect(result.error?.issues.map(i => [i.path.join('.'), i.message])).toEqual([
+      ['name', 'Ingresá el nombre'],
+      ['activityStartDate', 'El inicio de actividades no puede ser una fecha futura']
     ])
   })
 })

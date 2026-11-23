@@ -1,4 +1,6 @@
+import { businessUpdateSchema } from '@pollux/contracts'
 import type { VatCondition } from '@pollux/contracts'
+import { z } from 'zod'
 import { formatDate, maskCuit, vatConditionLabels } from './format'
 
 /** Datos del negocio as the API sends them on a Delivery note: every field but `name` may be empty. */
@@ -46,3 +48,45 @@ export function issuerLines(business: BusinessData): IssuerLine[] {
     .filter((line): line is [string, string] => Boolean(line[1]))
     .map(([label, value]) => ({ label, value }))
 }
+
+/** The fields of the Datos del negocio form, as typed. `vatCondition: null` is "Sin especificar". */
+export interface BusinessFormState {
+  name: string
+  legalName: string
+  cuit: string
+  vatCondition: VatCondition | null
+  address: string
+  city: string
+  province: string
+  postalCode: string
+  phone: string
+  grossIncomeNumber: string
+  /** `yyyy-mm-dd` from the date input, or `''` when empty. */
+  activityStartDate: string
+}
+
+export function businessFormState(business?: BusinessData | null): BusinessFormState {
+  return {
+    name: business?.name ?? '',
+    legalName: business?.legalName ?? '',
+    cuit: business?.cuit ?? '',
+    vatCondition: business?.vatCondition ?? null,
+    address: business?.address ?? '',
+    city: business?.city ?? '',
+    province: business?.province ?? '',
+    postalCode: business?.postalCode ?? '',
+    phone: business?.phone ?? '',
+    grossIncomeNumber: business?.grossIncomeNumber ?? '',
+    activityStartDate: business?.activityStartDate ?? ''
+  }
+}
+
+/**
+ * The Datos del negocio form: the API's `businessUpdateSchema` with the name required, and an
+ * empty date input read as "none" (the shared schema takes `null`, not `''`, for a date). Every
+ * field is sent, so one left blank is cleared.
+ */
+export const businessFormSchema = businessUpdateSchema.required({ name: true }).extend({
+  activityStartDate: z.preprocess(v => (v === '' ? null : v), businessUpdateSchema.shape.activityStartDate)
+})
+export type BusinessFormOutput = z.output<typeof businessFormSchema>
