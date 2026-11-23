@@ -28,7 +28,7 @@ interface Fixtures {
 async function callApiAs<T>(userId: string, method: string, path: string, body?: unknown): Promise<T> {
   const [business] = await sql<{ id: string }[]>`
     select m.business_id as id from app.business_members m where m.profile_id = ${userId} limit 1`
-  const res = await fetch(`http://localhost:${E2E_API_PORT}${path}`, {
+  const res = await fetch(`http://localhost:${E2E_API_PORT}/api${path}`, {
     method,
     headers: { 'Authorization': `Bearer ${userId}`, 'X-Business-Id': business!.id, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -91,6 +91,11 @@ export const test = base.extend<Fixtures>({
 })
 
 export { expect }
+
+/** A request URL's path inside the API, without the `/api` prefix it is served under. */
+export function apiPath(url: string): string {
+  return new URL(url).pathname.replace(/^\/api(?=\/)/, '')
+}
 
 /**
  * A day in Argentina as `yyyy-mm-dd`, `offset` calendar days from today. Today comes from

@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 import { E2E_API_PORT, E2E_DASHBOARD_PORT, e2eDatabaseUrl } from './e2e/env'
 
-const apiUrl = `http://localhost:${E2E_API_PORT}`
+const apiUrl = `http://localhost:${E2E_API_PORT}/api`
 const dashboardUrl = `http://localhost:${E2E_DASHBOARD_PORT}`
 
 /**

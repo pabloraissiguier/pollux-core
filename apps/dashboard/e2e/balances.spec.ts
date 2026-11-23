@@ -1,4 +1,4 @@
-import { dayInArgentina, expect, test } from './fixtures'
+import { apiPath, dayInArgentina, expect, test } from './fixtures'
 
 interface CustomerWithBranches { id: string, branches: { id: string }[] }
 
@@ -56,7 +56,7 @@ test('the owner enters a Customer\'s Opening balance once, from the Customer pag
   // Whether it's offered comes from the Balance, not from reading the Statement.
   const statementReads: string[] = []
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname === `/customers/${kiosco.id}/statement`) statementReads.push(request.url())
+    if (apiPath(request.url()) === `/customers/${kiosco.id}/statement`) statementReads.push(request.url())
   })
 
   await page.goto(`/clientes/${kiosco.id}`)

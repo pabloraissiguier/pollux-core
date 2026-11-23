@@ -4,6 +4,7 @@
  * - Vercel, whose Hono support serves the app exported as default from `src/index.ts`;
  * - the Node server (`src/server.ts`).
  */
+import { Hono } from 'hono'
 import { createApp } from './app'
 import { createSupabaseVerifier, createTestVerifier } from './auth/verifier'
 import { createDb } from './db'
@@ -20,7 +21,12 @@ const verifyToken = env.API_AUTH_VERIFIER === 'test'
   ? createTestVerifier()
   : createSupabaseVerifier(env.SUPABASE_URL)
 
-const app = createApp({ db, verifyToken, corsOrigins: env.API_CORS_ORIGINS })
+/**
+ * Served under `/api` everywhere (Node server, CLI, Vercel). On Vercel the project rewrites
+ * `/api/(.*)` to this service and passes the path through unchanged, so the prefix lives here.
+ * The tests build the app with `createApp` directly, without the prefix.
+ */
+const app = new Hono().route('/api', createApp({ db, verifyToken, corsOrigins: env.API_CORS_ORIGINS }))
 
 export default app
 export type { AppType } from './app'

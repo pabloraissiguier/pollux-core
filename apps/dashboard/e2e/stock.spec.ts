@@ -1,5 +1,5 @@
 import { createProduct } from './catalog'
-import { expect, test, type Page } from './fixtures'
+import { apiPath, expect, test, type Page } from './fixtures'
 
 /** Records a Stock adjustment from the Product page, through the "Ajustar stock" sheet. */
 async function adjustStock(page: Page, adjustment: { direction: 'Sumar' | 'Restar', quantity: string, reason: string, notes?: string }) {
@@ -104,7 +104,7 @@ test('the owner types counted quantities for several Products and saves them in 
 
   const stockRequests: string[] = []
   page.on('request', (request) => {
-    if (request.url().includes('/stock/')) stockRequests.push(`${request.method()} ${new URL(request.url()).pathname}`)
+    if (request.url().includes('/stock/')) stockRequests.push(`${request.method()} ${apiPath(request.url())}`)
   })
   await save.click()
   await expect(page.getByText('Conteo guardado', { exact: true })).toBeVisible()

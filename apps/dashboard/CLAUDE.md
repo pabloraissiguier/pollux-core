@@ -32,7 +32,7 @@ First run on a machine: `pnpm exec playwright install chromium` (both projects u
 
 | Key | Env at run time | Default |
 |---|---|---|
-| `apiBase` | `NUXT_PUBLIC_API_BASE` | `http://localhost:${API_PORT}` (3001) |
+| `apiBase` | `NUXT_PUBLIC_API_BASE` | `http://localhost:${API_PORT}/api` (3001); `/api` when built on Vercel (`VERCEL` set) |
 | `supabaseUrl`, `supabasePublishableKey` | `NUXT_PUBLIC_SUPABASE_URL`, `NUXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` from `.env` at build time |
 | `authMode` | `NUXT_PUBLIC_AUTH_MODE` | `supabase`. `test` is for E2E only (see below) |
 

@@ -6,5 +6,5 @@ import { readEnv } from './env'
 const { API_PORT } = readEnv()
 
 serve({ fetch: app.fetch, port: API_PORT }, (info) => {
-  console.log(`API escuchando en http://localhost:${info.port}`)
+  console.log(`API escuchando en http://localhost:${info.port}/api`)
 })

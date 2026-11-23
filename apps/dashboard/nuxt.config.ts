@@ -38,7 +38,8 @@ export default defineNuxtConfig({
   // Each value can be overridden at run time with NUXT_PUBLIC_<NAME> (e.g. NUXT_PUBLIC_API_BASE).
   runtimeConfig: {
     public: {
-      apiBase: `http://localhost:${process.env.API_PORT || 3001}`,
+      // On Vercel the API is the `api` service of the same project, rewritten from `/api`.
+      apiBase: process.env.VERCEL ? '/api' : `http://localhost:${process.env.API_PORT || 3001}/api`,
       supabaseUrl: process.env.SUPABASE_URL || '',
       supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || '',
       /**
