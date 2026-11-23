@@ -1,9 +1,9 @@
-import { daySchema, PAYMENT_METHODS, paymentAmountSchema } from '@pollux/contracts'
+import { orderDeliverSchema, PAYMENT_METHODS, paymentAmountSchema, paymentCreateSchema } from '@pollux/contracts'
 import type { PaymentMethod } from '@pollux/contracts'
 import type { InferResponseType } from 'hono/client'
 import { z } from 'zod'
 import type { ApiClient } from '~/composables/useApi'
-import { parseDecimalInput, todayInArgentina } from './format'
+import { parseDecimalInput } from './format'
 
 /** A Payment as the API returns it; a voided one keeps `voidedAt` and `voidReason`. */
 export type Payment = InferResponseType<ApiClient['payments'][':id']['$get'], 200>
@@ -24,8 +24,7 @@ export const paymentAmountInputSchema = z
 
 /**
  * The Payment sheet's form: the choice, the amount and reference (asked only for a Payment) and
- * the day: the Delivered date when `delivering`, else the Payment date, never in the future (the
- * API refuses it too; #58 moves this rule to `@pollux/contracts`). Outputs the day plus the
+ * the day: the Delivered date when `delivering`, else the Payment date. Outputs the day plus the
  * Payment to record, or `null` for "Cuenta corriente (sin pago)".
  */
 export function paymentFormSchema(delivering: boolean) {
@@ -41,13 +40,18 @@ export function paymentFormSchema(delivering: boolean) {
 }
 export type PaymentFormOutput = z.output<ReturnType<typeof paymentFormSchema>>
 
+/**
+ * The day fields exactly as the API checks them (`@pollux/contracts`): never later than today in
+ * Córdoba, with the Spanish message of each. Required here, since the sheet always sends a day.
+ */
+const deliveredOnSchema = orderDeliverSchema.shape.deliveredOn.unwrap()
+const paidOnSchema = paymentCreateSchema.shape.paidOn.unwrap()
+
 function paymentFormFields(delivering: boolean) {
   return z.object({
     choice: z.enum(['noPayment', ...PAYMENT_METHODS], { message: 'Elegí un medio de pago' }),
     amount: z.string(),
     reference: z.string().trim().max(200),
-    day: daySchema.refine(day => day <= todayInArgentina(), {
-      message: delivering ? 'La fecha entregada no puede ser futura' : 'La fecha de pago no puede ser futura'
-    })
+    day: delivering ? deliveredOnSchema : paidOnSchema
   })
 }
