@@ -64,17 +64,21 @@ watch(status, (value) => {
 
     <template v-else>
       <header class="flex flex-wrap items-start justify-between gap-4 border-b border-default pb-4">
-        <div class="flex flex-col gap-1">
+        <section
+          aria-label="Emisor"
+          class="flex flex-col gap-1"
+        >
           <p class="text-lg font-semibold text-highlighted">
-            {{ note.business.name }}
+            {{ note.business.legalName || note.business.name }}
           </p>
           <p
-            v-if="note.business.cuit"
-            class="text-sm text-muted"
+            v-for="line in issuerLines(note.business)"
+            :key="line.label"
+            class="text-sm"
           >
-            CUIT {{ maskCuit(note.business.cuit) }}
+            <span class="text-muted">{{ line.label }}</span> {{ line.value }}
           </p>
-        </div>
+        </section>
         <div class="flex flex-col gap-1 sm:items-end">
           <h1 class="text-2xl font-semibold text-highlighted">
             Remito N° {{ note.number }}
