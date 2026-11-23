@@ -1,14 +1,8 @@
-import { expect, test } from './fixtures'
+import { dayInArgentina, expect, test } from './fixtures'
 
 interface CustomerWithBranches { id: string, branches: { id: string }[] }
 
 const branch = { address: 'San Martín 100', city: 'Corral de Bustos' }
-
-/** A day in Argentina as `yyyy-mm-dd`, `offset` days from today. */
-function dayInArgentina(offset = 0): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
-    .format(new Date(Date.now() + offset * 86_400_000))
-}
 
 test('the owner sees who owes, largest first, with the grand total', { tag: '@desktop' }, async ({ page, createOwner, signIn, callApi }) => {
   const userId = await createOwner('Gio Pack')

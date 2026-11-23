@@ -1,15 +1,4 @@
-import { expect, test } from './fixtures'
-
-/** Today in Argentina as `yyyy-mm-dd`, the date a Payment starts with. */
-function todayInArgentina(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
-}
-
-/** Tomorrow in Argentina as `yyyy-mm-dd`: a day that has not happened yet. */
-function tomorrowInArgentina(): string {
-  const [y, m, d] = todayInArgentina().split('-').map(Number)
-  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10)
-}
+import { dayInArgentina, expect, test } from './fixtures'
 
 interface CustomerWithBranches { id: string, branches: { id: string }[] }
 
@@ -23,7 +12,7 @@ test('the owner delivers an Order with a partial cash Payment and sees the remai
   const order = await callApi<{ id: string, number: number }>(userId, 'POST', '/orders', {
     customerId: kiosco.id,
     branchId: kiosco.branches[0]!.id,
-    deliveryDate: todayInArgentina(),
+    deliveryDate: dayInArgentina(),
     lines: [{ productId: vaso.id, quantity: 2 }]
   })
   await signIn(userId)
@@ -42,10 +31,10 @@ test('the owner delivers an Order with a partial cash Payment and sees the remai
   await sheet.getByLabel('Importe').fill('1.000,50')
 
   // The Delivered date cannot be in the future.
-  await sheet.getByLabel('Fecha entregada').fill(tomorrowInArgentina())
+  await sheet.getByLabel('Fecha entregada').fill(dayInArgentina(1))
   await sheet.getByRole('button', { name: 'Confirmar entrega' }).click()
   await expect(sheet).toContainText('La fecha entregada no puede ser futura')
-  await sheet.getByLabel('Fecha entregada').fill(todayInArgentina())
+  await sheet.getByLabel('Fecha entregada').fill(dayInArgentina())
   await sheet.getByRole('button', { name: 'Confirmar entrega' }).click()
 
   await expect(sheet).toContainText('Pedido entregado')
@@ -79,16 +68,16 @@ test('the owner records a standalone Payment from the Customer page and voids it
   await page.getByRole('button', { name: 'Registrar pago' }).click()
   const sheet = page.getByRole('dialog', { name: 'Registrar pago' })
   await expect(sheet).toContainText('Kiosco La Esquina')
-  await expect(sheet.getByLabel('Fecha de pago')).toHaveValue(todayInArgentina())
+  await expect(sheet.getByLabel('Fecha de pago')).toHaveValue(dayInArgentina())
   await sheet.getByRole('radio', { name: 'Transferencia' }).check()
   await sheet.getByLabel('Importe').fill('750')
   await sheet.getByLabel('Referencia').fill('TRF 0042')
 
   // The Payment date cannot be in the future.
-  await sheet.getByLabel('Fecha de pago').fill(tomorrowInArgentina())
+  await sheet.getByLabel('Fecha de pago').fill(dayInArgentina(1))
   await sheet.getByRole('button', { name: 'Registrar pago' }).click()
   await expect(sheet).toContainText('La fecha de pago no puede ser futura')
-  await sheet.getByLabel('Fecha de pago').fill(todayInArgentina())
+  await sheet.getByLabel('Fecha de pago').fill(dayInArgentina())
   await sheet.getByRole('button', { name: 'Registrar pago' }).click()
 
   await expect(sheet).toContainText('Pago registrado')

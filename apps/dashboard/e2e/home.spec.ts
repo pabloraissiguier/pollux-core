@@ -1,10 +1,4 @@
-import { expect, test } from './fixtures'
-
-/** A day in Argentina as `yyyy-mm-dd`, `offset` days from today. */
-function dayInArgentina(offset = 0): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
-    .format(new Date(Date.now() + offset * 86_400_000))
-}
+import { dayInArgentina, expect, test } from './fixtures'
 
 interface CustomerWithBranches { id: string, branches: { id: string }[] }
 

@@ -1,11 +1,4 @@
-import { expect, test, type Locator, type Page } from './fixtures'
-
-/** Tomorrow in Argentina as `yyyy-mm-dd`, the Delivery date a new Order starts with. */
-function tomorrowInArgentina(): string {
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
-  const [y, m, d] = today.split('-').map(Number)
-  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10)
-}
+import { dayInArgentina, expect, test, type Locator, type Page } from './fixtures'
 
 /** An Order's request bodies seen by the browser, to count the writes. */
 function watchOrderWrites(page: Page) {
@@ -39,7 +32,7 @@ test('the owner takes an Order with Discounts on a phone, sees the live total an
   await page.getByRole('combobox', { name: 'Cliente' }).fill('kiosco')
   await page.getByRole('option', { name: /Kiosco La Esquina/ }).click()
   await expect(page.getByText('Belgrano 50, Corral de Bustos')).toBeVisible()
-  await expect(page.getByLabel('Fecha de entrega')).toHaveValue(tomorrowInArgentina())
+  await expect(page.getByLabel('Fecha de entrega')).toHaveValue(dayInArgentina(1))
 
   // A Product found by search, with its Price and Available stock.
   const picker = page.getByRole('region', { name: 'Agregar productos' })
