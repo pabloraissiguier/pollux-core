@@ -109,16 +109,10 @@ const columns: TableColumn<PlanItem>[] = [
 
     <template #body>
       <div class="flex w-full max-w-2xl flex-col gap-6">
-        <!--
-          Validated on input only, not on blur or change (an input's change fires on blur):
-          tapping "Ver vista previa" blurs the field, and an error clearing right then moves the
-          button out from under the finger, so the tap is lost. Errors clear as you type instead.
-        -->
         <UForm
           ref="form"
           :schema="categoryPriceUpdateFormSchema"
           :state="state"
-          :validate-on="['input']"
           :disabled="applying"
           class="flex flex-col gap-4"
           @submit="onPreview"

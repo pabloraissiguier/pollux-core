@@ -87,7 +87,6 @@ const { saving, onSubmit } = useFormSubmit<FormOutput>(form, async (data, reques
         ref="form"
         :schema="schema"
         :state="state"
-        :validate-on="['input']"
         class="flex flex-col gap-4"
         @submit="onSubmit"
       >

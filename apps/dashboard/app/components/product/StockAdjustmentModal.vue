@@ -55,13 +55,10 @@ const { saving, onSubmit } = useFormSubmit<z.output<typeof stockAdjustmentFormSc
     :description="product.name"
   >
     <template #body>
-      <!-- Errors clear while typing, not on blur: a blur that removes an error moves the submit
-           button up from under a finger that's already tapping it (issue #41). -->
       <UForm
         ref="form"
         :schema="stockAdjustmentFormSchema"
         :state="state"
-        :validate-on="['input']"
         class="flex flex-col gap-4"
         @submit="onSubmit"
       >
