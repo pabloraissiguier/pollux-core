@@ -6,7 +6,7 @@ const { request } = useApi()
 const toast = useToast()
 const id = String(route.params.id)
 
-const { data: order, status } = await useAsyncData(
+const { data: order, status } = useLazyAsyncData(
   `pedido-${id}`,
   () => request(c => c.orders[':id'].$get({ param: { id } }))
 )
@@ -16,7 +16,7 @@ useSeoMeta({ title: () => (order.value ? `Pedido N° ${order.value.number}` : 'P
 // The Available stock of a Pending Order's Products, so a line whose Product is short warns. The
 // lines carry only the Product's id, Code and name. Delivered and Cancelled Orders reserve nothing,
 // so they need none; it reloads when the status changes (delivered, or the delivery undone).
-const { data: available } = await useAsyncData(
+const { data: available } = useLazyAsyncData(
   `pedido-${id}-disponible`,
   async () => {
     if (order.value?.status !== 'pending') return {}
@@ -24,7 +24,7 @@ const { data: available } = await useAsyncData(
     const products = await Promise.all(productIds.map(productId => request(c => c.products[':id'].$get({ param: { id: productId } }))))
     return Object.fromEntries(products.map(p => [p.id, p.stock.available]))
   },
-  { lazy: true, watch: [() => order.value?.status] }
+  { watch: [() => order.value?.status] }
 )
 
 /** The Available stock of a Pending Order's line's Product when it is short, else nothing. */
@@ -115,9 +115,9 @@ async function undoDelivery() {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonDetail
         v-if="status === 'pending' && !order"
-        class="h-48 w-full"
+        :cards="3"
       />
 
       <UEmpty

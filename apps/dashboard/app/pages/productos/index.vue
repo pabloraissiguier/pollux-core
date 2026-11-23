@@ -4,7 +4,7 @@ import type { Product } from '~/utils/products'
 useSeoMeta({ title: 'Productos' })
 
 const { request } = useApi()
-const { data: categories } = await useCategories()
+const { data: categories } = useCategories()
 
 // The filters live in the URL, so coming back from a Product keeps the search and Category.
 const { search, searched, filters: { categoryId, showInactive }, values, page, pageSize, paging, sources } = useListQuery({
@@ -12,7 +12,7 @@ const { search, searched, filters: { categoryId, showInactive }, values, page, p
   filters: { categoryId: textParam('categoria'), showInactive: flagParam('inactivos') }
 })
 
-const { data: products, status } = await useAsyncData(
+const { data: products, status } = useLazyAsyncData(
   'productos',
   () => request(c => c.products.$get({
     query: {
@@ -73,6 +73,7 @@ function productSubtitle(product: Product) {
             v-model="search"
             type="search"
             icon="i-lucide-search"
+            :loading="status === 'pending'"
             placeholder="Buscar por nombre, código o marca"
             aria-label="Buscar por nombre, código o marca"
             autocomplete="off"
@@ -103,9 +104,9 @@ function productSubtitle(product: Product) {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonList
         v-if="status === 'pending' && !products"
-        class="h-32 w-full"
+        trailing
       />
 
       <UEmpty

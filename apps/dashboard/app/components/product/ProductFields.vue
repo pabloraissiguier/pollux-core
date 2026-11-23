@@ -8,7 +8,7 @@ import type { ProductFormState } from '~/utils/products'
 const props = defineProps<{ withPrice?: boolean }>()
 const state = defineModel<ProductFormState>({ required: true })
 
-const { data: categories } = await useCategories()
+const { data: categories } = useCategories()
 // "Sin categoría" is a choice of its own (value null, which the API reads as "clear it"): easier
 // to hit on a phone than the select's small clear button, and reachable from the keyboard.
 const categoryItems = computed(() => [{ id: null, name: 'Sin categoría' }, ...categories.value])

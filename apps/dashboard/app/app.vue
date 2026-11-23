@@ -18,6 +18,7 @@ const componentDefaults = { form: { validateOn: ['input' as const] } }
 <template>
   <UTheme :props="componentDefaults">
     <UApp :locale="es">
+      <AppActivityBar />
       <NuxtLayout>
         <NuxtPage />
       </NuxtLayout>

@@ -35,6 +35,9 @@ export default defineNuxtConfig({
     }
   },
 
+  // Shown while the app starts (code, session, GET /me), instead of a blank screen.
+  spaLoadingTemplate: 'spa-loading-template.html',
+
   // Each value can be overridden at run time with NUXT_PUBLIC_<NAME> (e.g. NUXT_PUBLIC_API_BASE).
   runtimeConfig: {
     public: {

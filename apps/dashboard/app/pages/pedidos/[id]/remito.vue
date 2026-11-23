@@ -11,7 +11,7 @@ const route = useRoute()
 const { request } = useApi()
 const id = String(route.params.id)
 
-const { data: note, status } = await useAsyncData(
+const { data: note, status } = useLazyAsyncData(
   `pedido-${id}-remito`,
   () => request(c => c.orders[':id']['delivery-note'].$post({ param: { id } }))
 )

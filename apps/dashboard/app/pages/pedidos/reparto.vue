@@ -22,7 +22,7 @@ watch(searchedDay, (fecha) => {
   if (fecha) router.replace({ query: { fecha } })
 })
 
-const { data: orders, status } = await useAsyncData(
+const { data: orders, status } = useLazyAsyncData(
   'reparto',
   async () => {
     if (!searchedDay.value) return null
@@ -86,9 +86,9 @@ function onDelivered(delivered: Order) {
     </template>
 
     <template #body>
-      <USkeleton
+      <SkeletonList
         v-if="status === 'pending' && !orders"
-        class="h-32 w-full"
+        trailing
       />
 
       <UEmpty

@@ -4,7 +4,7 @@
  */
 export function useSuppliers() {
   const { request } = useApi()
-  return useAsyncData(
+  return useLazyAsyncData(
     'proveedores-todos',
     async () => (await request(c => c.suppliers.$get({ query: { limit: '200' } }))).items,
     { default: () => [] }

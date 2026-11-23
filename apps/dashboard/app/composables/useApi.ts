@@ -71,6 +71,7 @@ export function useApi() {
   const { activeBusinessId, forgetBusiness, forgetSession } = useActiveBusiness()
   const { endSession } = useSignOut()
   const toast = useToast()
+  const { track } = useActivity()
   // Captured now: the handlers below run after awaits, outside the Nuxt context.
   const route = useRoute()
   const router = useRouter()
@@ -108,9 +109,17 @@ export function useApi() {
     }
   }
 
-  async function request<R extends ClientResponse<unknown, number, 'json'>>(
+  // Every request counts as activity, so the bar at the top shows while the API is answering.
+  function request<R extends ClientResponse<unknown, number, 'json'>>(
     call: (client: ApiClient) => Promise<R>,
     options: ApiRequestOptions = {}
+  ): Promise<SuccessBody<R>> {
+    return track(() => send(call, options))
+  }
+
+  async function send<R extends ClientResponse<unknown, number, 'json'>>(
+    call: (client: ApiClient) => Promise<R>,
+    options: ApiRequestOptions
   ): Promise<SuccessBody<R>> {
     let res: R
     try {

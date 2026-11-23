@@ -5,7 +5,7 @@
  */
 export function useCategories() {
   const { request } = useApi()
-  return useAsyncData(
+  return useLazyAsyncData(
     'categorias',
     async () => (await request(c => c.categories.$get({ query: { limit: '200' } }))).items,
     { default: () => [] }

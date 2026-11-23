@@ -11,7 +11,7 @@ const RESULT_LIMIT = 30
 
 const { request } = useApi()
 const toast = useToast()
-const { data: suppliers } = await useSuppliers()
+const { data: suppliers } = useSuppliers()
 const form = useTemplateRef('form')
 
 const state = reactive(purchaseFormState())
@@ -29,7 +29,7 @@ watch(productSearch, (value) => {
 })
 onBeforeUnmount(() => clearTimeout(searchTimer))
 
-const { data: products, status: productsStatus } = await useAsyncData(
+const { data: products, status: productsStatus } = useLazyAsyncData(
   'compra-productos',
   async () => searchedText.value
     ? (await request(c => c.products.$get({ query: { q: searchedText.value, limit: String(RESULT_LIMIT) } }))).items
