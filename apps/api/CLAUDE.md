@@ -32,8 +32,8 @@ The suite builds its own app and never reads `DATABASE_URL`; the vitest config r
 
 ## Structure
 
-- `src/app.ts`: **`createApp({ db, verifyToken, corsOrigins })`**, the app factory, and `AppType`. It mounts CORS first, then the session middleware and every module router, chained. It throws if given the test verifier when `NODE_ENV=production`.
-- `src/index.ts`: the app built from env, exported as default. It is the entry for the Hono CLI and for Vercel (whose Hono support serves the default export of `src/index.ts`; on Vercel it uses `DATABASE_POOLER_URL` with `prepare: false`). `src/server.ts` serves it on Node.
+- `src/create-app.ts`: **`createApp({ db, verifyToken, corsOrigins })`**, the app factory, and `AppType`. It mounts CORS first, then the session middleware and every module router, chained. It throws if given the test verifier when `NODE_ENV=production`.
+- `src/index.ts`: the app built from env, exported as default. It is the entry for the Hono CLI and for Vercel (whose Hono support serves the default export of `src/index.ts`; on Vercel it uses `DATABASE_POOLER_URL` with `prepare: false`). `src/server.ts` serves it on Node. Don't add an `app.{ts,js}`, `index.*`, `server.*` at the service root or a `src/app.*`: Vercel also looks for the entry at those paths, takes the first match (`src/app.ts` before `src/index.ts`), and crashes at startup (`FUNCTION_INVOCATION_FAILED`, "The default export must be a function or server") when that file has no default-exported app. That's why the factory lives in `create-app.ts`.
 - `src/auth/verifier.ts`: the Supabase verifier (JWKS at `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`, issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`) and the test verifier.
 - `src/auth/session.ts`: the **session** middleware (token → 401, first-sight `profiles` row, business from `X-Business-Id` → 403 unless a member, or the only membership) and **`requireBusiness`**. Mount `requireBusiness` on every business-scoped router: it guarantees `c.var.businessId` is a string (403 `no_business`, 400 `business_not_selected`). `/me` is the only route without it.
 - `src/routes/<module>.ts`: one Hono sub-router per module, mounted in `createApp`. Handlers only validate (`validate(...)` on `param`, `query`, `json`) and delegate.
@@ -124,7 +124,7 @@ The suite builds its own app and never reads `DATABASE_URL`; the vitest config r
 - **Lists** validate their query with a schema built on `paginationSchema` from `@pollux/contracts` (`limit` 1–200, default 50; `offset`, default 0) and answer `{ items, total }`, where `total` counts every match. Escape user text before putting it in a `LIKE` pattern.
 - **Dates of things that already happened** (the Delivered date, the Payment date, the Purchase date, the Opening balance and Balance adjustment dates) use `pastDaySchema(message)` from `@pollux/contracts`: a `yyyy-mm-dd` day no later than `todayInCordoba()`, read at validation time. `src/dates.ts` re-exports that same function as `today()` for defaults, so a default is never refused.
 - **Edits are `PATCH` with partial bodies:** a field left out is kept, `null` clears an optional one. In the shared schemas an empty string in an optional text field means `null`.
-- **Errors are `{ error: { code, message, details? } }`**: throw an `ApiError(status, code, message)` with a stable English slug and a Spanish message. Validation errors are 400 `validation_error` with `details` mapping each field path to its messages. Zod's own messages are in Spanish (`z.locales.es()`, set in `src/app.ts`).
+- **Errors are `{ error: { code, message, details? } }`**: throw an `ApiError(status, code, message)` with a stable English slug and a Spanish message. Validation errors are 400 `validation_error` with `details` mapping each field path to its messages. Zod's own messages are in Spanish (`z.locales.es()`, set in `src/create-app.ts`).
 
 ## Tests
 

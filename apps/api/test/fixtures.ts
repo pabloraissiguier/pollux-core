@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { businesses, businessMembers, profiles } from '@pollux/db/schema'
 import { sql } from 'drizzle-orm'
-import { createApp } from '../src/app'
+import { createApp } from '../src/create-app'
 import { createTestVerifier } from '../src/auth/verifier'
 import { createDb } from '../src/db'
 import { testDatabaseUrl } from './test-db'

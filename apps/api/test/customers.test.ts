@@ -1,6 +1,6 @@
 import { hc } from 'hono/client'
 import { afterAll, beforeAll, describe, expect, expectTypeOf, it } from 'vitest'
-import type { AppType } from '../src/app'
+import type { AppType } from '../src/create-app'
 import { setupTestApp } from './fixtures'
 
 const t = setupTestApp()
