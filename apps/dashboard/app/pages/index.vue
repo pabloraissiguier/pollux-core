@@ -3,8 +3,8 @@ import { sumMoney } from '@pollux/contracts'
 import { ordersCountLabel } from '~/utils/orders'
 
 /**
- * Inicio: the day at a glance (today's Orders still to deliver, what all Customers owe) and the
- * two everyday actions one tap away.
+ * Inicio: the day at a glance (Products to restock, today's Orders still to deliver, what all
+ * Customers owe) and the two everyday actions one tap away.
  */
 useSeoMeta({ title: 'Inicio' })
 
@@ -24,6 +24,15 @@ const toDeliverTotal = computed(() => toDeliver.value && sumMoney(toDeliver.valu
 const { data: balances, refresh: refreshBalances } = await useAsyncData(
   'inicio-saldo-total',
   () => request(c => c.customers['with-balance'].$get({ query: { limit: '1' } }))
+)
+
+// Stock a reponer: Products whose Available stock is below zero, largest shortfall first, with the
+// Pending Orders that reserve them. Shown only when there is one.
+const SHORTAGES_SHOWN = 50
+const { data: shortages } = await useAsyncData(
+  'inicio-stock-a-reponer',
+  () => request(c => c.stock.shortages.$get({ query: { limit: String(SHORTAGES_SHOWN) } })),
+  { lazy: true }
 )
 
 const paying = ref(false)
@@ -59,6 +68,70 @@ const paying = ref(false)
             @click="paying = true"
           />
         </div>
+
+        <UCard
+          v-if="shortages?.items.length"
+          as="section"
+          aria-labelledby="inicio-stock-a-reponer"
+        >
+          <template #header>
+            <h2
+              id="inicio-stock-a-reponer"
+              class="flex items-center gap-2 font-semibold text-highlighted"
+            >
+              <UIcon
+                name="i-lucide-package-x"
+                class="size-5 shrink-0 text-warning"
+              />
+              Stock a reponer
+            </h2>
+          </template>
+
+          <ul class="divide-y divide-default">
+            <li
+              v-for="shortage in shortages.items"
+              :key="shortage.product.id"
+              class="flex flex-col gap-1 py-3 first:pt-0 last:pb-0"
+            >
+              <ULink
+                :to="`/productos/${shortage.product.id}`"
+                class="flex flex-col"
+              >
+                <span class="font-medium text-highlighted">{{ shortage.product.name }}</span>
+                <span class="text-sm text-muted">{{ shortage.product.code }}</span>
+              </ULink>
+              <OrderStockWarning :available="shortage.stock.available" />
+              <ul
+                v-if="shortage.orders.length"
+                :aria-label="`Pedidos pendientes con ${shortage.product.name}`"
+                class="flex flex-col gap-1"
+              >
+                <li
+                  v-for="order in shortage.orders"
+                  :key="order.id"
+                >
+                  <ULink
+                    :to="`/pedidos/${order.id}`"
+                    class="text-sm"
+                  >
+                    N° {{ order.number }} · {{ order.customer.name }} · {{ formatDate(order.deliveryDate) }} · {{ formatUnits(order.quantity) }} u.
+                  </ULink>
+                </li>
+              </ul>
+              <span
+                v-else
+                class="text-sm text-muted"
+              >Ningún pedido pendiente lo reserva: el stock físico es negativo.</span>
+            </li>
+          </ul>
+
+          <p
+            v-if="shortages.total > shortages.items.length"
+            class="mt-3 text-sm text-muted"
+          >
+            Se muestran los {{ shortages.items.length }} con mayor faltante de {{ shortages.total }}.
+          </p>
+        </UCard>
 
         <UCard>
           <div class="flex flex-col gap-1">
