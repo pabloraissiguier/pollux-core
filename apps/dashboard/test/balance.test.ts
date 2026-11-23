@@ -77,6 +77,7 @@ describe('balanceAfter', () => {
     expect(balanceAfter('1500.00', 'credit', '200')).toBe('1300.00')
     expect(balanceAfter('100.00', 'credit', '1.250,50')).toBe('-1150.50')
     expect(balanceAfter('0.00', 'debit', '2.500,50')).toBe('2500.50')
+    expect(balanceAfter('1500.00', 'credit', '1.000')).toBe('500.00')
   })
 
   it('has nothing to show until the amount is valid', () => {
@@ -89,6 +90,8 @@ describe('manual entry forms', () => {
   it('turn the typed amount into a decimal string, keeping the side apart', () => {
     expect(balanceAdjustmentFormSchema.parse({ side: 'credit', amount: '1.250,50', reason: ' Incobrable ', entryDate: '2026-01-10' }))
       .toEqual({ side: 'credit', amount: '1250.50', reason: 'Incobrable', entryDate: '2026-01-10' })
+    expect(openingBalanceFormSchema.parse({ side: 'debit', amount: '1.000', entryDate: '2026-01-10' }))
+      .toEqual({ side: 'debit', amount: '1000.00', entryDate: '2026-01-10' })
   })
 
   it('refuse a future day, each with its own message', () => {

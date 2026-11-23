@@ -84,14 +84,21 @@ export function maskCuit(input: string): string {
   return [digits.slice(0, 2), digits.slice(2, 10), digits.slice(10)].filter(Boolean).join('-')
 }
 
+/** A whole number written with thousands dots: `1.000`, `12.500`, `1.234.567` (not `0.500`). */
+const THOUSANDS_ONLY = /^[1-9]\d{0,2}(?:\.\d{3})+$/
+
 /**
- * An amount as people type it in es-AR (`"1.234,50"`, `"1234,50"`) → the decimal string the API
- * takes (`"1234.50"`). With a comma, dots are thousands separators; without one, a point is the
- * decimal point. Anything else is left as is, for the money schema to reject with its message.
+ * An amount as people type it in es-AR (`"1.234,50"`, `"1234,50"`, `"1.000"`) → the decimal
+ * string the API takes (`"1234.50"`, `"1000"`). With a comma, dots are thousands separators.
+ * Without one, dots that each sit before exactly three digits are thousands separators too
+ * (`"1.000"` is a thousand, as es-AR writes it); any other point is the decimal point (`"1.50"`,
+ * `"1234.50"`, as the API writes amounts). Anything else is left as is, for the money schema to
+ * reject with its message.
  */
 export function parseDecimalInput(input: string): string {
   const compact = input.replace(/\s/g, '')
-  return compact.includes(',') ? compact.replace(/\./g, '').replace(',', '.') : compact
+  if (compact.includes(',')) return compact.replace(/\./g, '').replace(',', '.')
+  return THOUSANDS_ONLY.test(compact) ? compact.replace(/\./g, '') : compact
 }
 
 /** Medio de pago. "Cuenta corriente" is not one: it means the delivery had no Payment (ADR-0001). */
