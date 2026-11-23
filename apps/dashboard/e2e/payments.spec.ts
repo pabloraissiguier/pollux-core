@@ -5,6 +5,12 @@ function todayInArgentina(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
 }
 
+/** Tomorrow in Argentina as `yyyy-mm-dd`: a day that has not happened yet. */
+function tomorrowInArgentina(): string {
+  const [y, m, d] = todayInArgentina().split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d! + 1)).toISOString().slice(0, 10)
+}
+
 interface CustomerWithBranches { id: string, branches: { id: string }[] }
 
 test('the owner delivers an Order with a partial cash Payment and sees the remaining Balance', { tag: '@desktop' }, async ({ page, createOwner, signIn, callApi }) => {
@@ -34,6 +40,12 @@ test('the owner delivers an Order with a partial cash Payment and sees the remai
   await sheet.getByRole('radio', { name: 'Efectivo' }).check()
   await expect(sheet.getByLabel('Importe')).toHaveValue('2469,00')
   await sheet.getByLabel('Importe').fill('1.000,50')
+
+  // The Delivered date cannot be in the future.
+  await sheet.getByLabel('Fecha entregada').fill(tomorrowInArgentina())
+  await sheet.getByRole('button', { name: 'Confirmar entrega' }).click()
+  await expect(sheet).toContainText('La fecha entregada no puede ser futura')
+  await sheet.getByLabel('Fecha entregada').fill(todayInArgentina())
   await sheet.getByRole('button', { name: 'Confirmar entrega' }).click()
 
   await expect(sheet).toContainText('Pedido entregado')
@@ -71,6 +83,12 @@ test('the owner records a standalone Payment from the Customer page and voids it
   await sheet.getByRole('radio', { name: 'Transferencia' }).check()
   await sheet.getByLabel('Importe').fill('750')
   await sheet.getByLabel('Referencia').fill('TRF 0042')
+
+  // The Payment date cannot be in the future.
+  await sheet.getByLabel('Fecha de pago').fill(tomorrowInArgentina())
+  await sheet.getByRole('button', { name: 'Registrar pago' }).click()
+  await expect(sheet).toContainText('La fecha de pago no puede ser futura')
+  await sheet.getByLabel('Fecha de pago').fill(todayInArgentina())
   await sheet.getByRole('button', { name: 'Registrar pago' }).click()
 
   await expect(sheet).toContainText('Pago registrado')
