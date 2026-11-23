@@ -21,6 +21,11 @@ describe('paymentFormSchema', () => {
     })
   })
 
+  it('reads "1.000" as a thousand, the way es-AR writes it without decimals', () => {
+    expect(paymentFormSchema(false).parse(form({ amount: '1.000' })).payment?.amount).toBe('1000.00')
+    expect(paymentFormSchema(false).parse(form({ amount: '12.500' })).payment?.amount).toBe('12500.00')
+  })
+
   it('records no Payment for "Cuenta corriente (sin pago)", whatever the amount field holds', () => {
     expect(paymentFormSchema(true).parse(form({ choice: 'noPayment', amount: '' }))).toEqual({ day: '2026-01-10', payment: null })
   })
