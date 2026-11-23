@@ -3,64 +3,30 @@ import type { Product } from '~/utils/products'
 
 useSeoMeta({ title: 'Productos' })
 
-const PAGE_SIZE = 50
-const SEARCH_DELAY_MS = 300
-
-const route = useRoute()
-const router = useRouter()
 const { request } = useApi()
 const { data: categories } = await useCategories()
 
-const queryText = (value: unknown) => (typeof value === 'string' ? value : '')
-
 // The filters live in the URL, so coming back from a Product keeps the search and Category.
-const search = ref(queryText(route.query.q))
-const categoryId = ref<string | null | undefined>(queryText(route.query.categoria) || undefined)
-const showInactive = ref(route.query.inactivos === '1')
-const page = ref(Number(route.query.pagina) || 1)
-
-// The search waits for a pause in typing instead of asking the API on every key.
-const searchedText = ref(search.value)
-let searchTimer: ReturnType<typeof setTimeout> | undefined
-watch(search, (value) => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    searchedText.value = value.trim()
-    page.value = 1
-  }, SEARCH_DELAY_MS)
-})
-onBeforeUnmount(() => clearTimeout(searchTimer))
-watch([categoryId, showInactive], () => {
-  page.value = 1
-})
-
-watch([searchedText, categoryId, showInactive, page], ([q, categoria, inactivos, pagina]) => {
-  router.replace({
-    query: {
-      q: q || undefined,
-      categoria: categoria || undefined,
-      inactivos: inactivos ? '1' : undefined,
-      pagina: pagina > 1 ? pagina : undefined
-    }
-  })
+const { search, searched, filters: { categoryId, showInactive }, values, page, pageSize, paging, sources } = useListQuery({
+  search: 'q',
+  filters: { categoryId: textParam('categoria'), showInactive: flagParam('inactivos') }
 })
 
 const { data: products, status } = await useAsyncData(
   'productos',
   () => request(c => c.products.$get({
     query: {
-      q: searchedText.value || undefined,
-      categoryId: categoryId.value || undefined,
+      q: searched.value || undefined,
+      categoryId: values.value.categoryId,
       // Left out, the API returns Active and Inactive Products together.
       active: showInactive.value ? undefined : 'true',
-      limit: String(PAGE_SIZE),
-      offset: String((page.value - 1) * PAGE_SIZE)
+      ...paging.value
     }
   })),
-  { watch: [searchedText, categoryId, showInactive, page] }
+  { watch: sources }
 )
 
-const hasFilters = computed(() => !!searchedText.value || !!categoryId.value)
+const hasFilters = computed(() => !!searched.value || !!values.value.categoryId)
 
 function productSubtitle(product: Product) {
   return [product.code, product.brand, product.category?.name].filter(Boolean).join(' · ')
@@ -205,10 +171,10 @@ function productSubtitle(product: Product) {
         </UPageList>
 
         <UPagination
-          v-if="products.total > PAGE_SIZE"
+          v-if="products.total > pageSize"
           v-model:page="page"
           :total="products.total"
-          :items-per-page="PAGE_SIZE"
+          :items-per-page="pageSize"
           class="self-center"
         />
       </template>

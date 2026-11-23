@@ -6,30 +6,16 @@ import type { Statement } from '~/utils/balance'
  * Resumen de cuenta: the Customer's Balance entries in date order (debe/haber), each with the
  * Balance right after it, filterable by a date range kept in the URL (`?desde=`, `?hasta=`).
  */
-const PAGE_SIZE = 50
-
 const route = useRoute()
-const router = useRouter()
 const { request } = useApi()
 const customerId = String(route.params.clienteId)
 
-const queryText = (value: unknown) => (typeof value === 'string' ? value : '')
-
-const from = ref(queryText(route.query.desde))
-const to = ref(queryText(route.query.hasta))
-const page = ref(Number(route.query.pagina) || 1)
-
-// A valid day or none: a date input is empty while a date is half typed.
-const day = (value: string) => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined)
-const fromDay = computed(() => day(from.value))
-const toDay = computed(() => day(to.value))
-
-watch([fromDay, toDay], () => {
-  page.value = 1
+const { filters: { from, to }, values, page, pageSize, paging, sources } = useListQuery({
+  filters: { from: dayParam('desde'), to: dayParam('hasta') }
 })
-watch([fromDay, toDay, page], ([desde, hasta, pagina]) => {
-  router.replace({ query: { desde, hasta, pagina: pagina > 1 ? pagina : undefined } })
-})
+// The range as sent: a whole day or none (`dayParam`).
+const fromDay = computed(() => values.value.from)
+const toDay = computed(() => values.value.to)
 
 // The dates are `yyyy-mm-dd` strings, so they compare as text. A backwards range asks nothing.
 const backwardsRange = computed(() => !!fromDay.value && !!toDay.value && fromDay.value > toDay.value)
@@ -50,11 +36,10 @@ const { data: statement, status, refresh: refreshStatement } = await useAsyncDat
         query: {
           from: fromDay.value,
           to: toDay.value,
-          limit: String(PAGE_SIZE),
-          offset: String((page.value - 1) * PAGE_SIZE)
+          ...paging.value
         }
       })),
-  { watch: [fromDay, toDay, page] }
+  { watch: sources }
 )
 
 const paying = ref(false)
@@ -209,10 +194,10 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
           </UCard>
 
           <UPagination
-            v-if="statement.total > PAGE_SIZE"
+            v-if="statement.total > pageSize"
             v-model:page="page"
             :total="statement.total"
-            :items-per-page="PAGE_SIZE"
+            :items-per-page="pageSize"
             class="self-center"
           />
         </template>

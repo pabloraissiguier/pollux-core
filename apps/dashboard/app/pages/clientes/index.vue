@@ -3,50 +3,20 @@ import type { Customer } from '~/utils/customers'
 
 useSeoMeta({ title: 'Clientes' })
 
-const PAGE_SIZE = 50
-const SEARCH_DELAY_MS = 300
-
-const route = useRoute()
-const router = useRouter()
 const { request } = useApi()
 
-const queryText = (value: unknown) => (typeof value === 'string' ? value : '')
-
 // The filters live in the URL, so coming back from a Customer keeps the search.
-const search = ref(queryText(route.query.q))
-const town = ref(queryText(route.query.localidad) || undefined)
-const page = ref(Number(route.query.pagina) || 1)
-
-// The search waits for a pause in typing instead of asking the API on every key.
-const searchedText = ref(search.value)
-let searchTimer: ReturnType<typeof setTimeout> | undefined
-watch(search, (value) => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    searchedText.value = value.trim()
-    page.value = 1
-  }, SEARCH_DELAY_MS)
-})
-onBeforeUnmount(() => clearTimeout(searchTimer))
-watch(town, () => {
-  page.value = 1
-})
-
-watch([searchedText, town, page], ([q, localidad, pagina]) => {
-  router.replace({ query: { q: q || undefined, localidad, pagina: pagina > 1 ? pagina : undefined } })
+const { search, searched, filters: { town }, values, page, pageSize, paging, sources } = useListQuery({
+  search: 'q',
+  filters: { town: textParam('localidad') }
 })
 
 const { data: customers, status } = await useAsyncData(
   'clientes',
   () => request(c => c.customers.$get({
-    query: {
-      q: searchedText.value || undefined,
-      town: town.value,
-      limit: String(PAGE_SIZE),
-      offset: String((page.value - 1) * PAGE_SIZE)
-    }
+    query: { q: searched.value || undefined, town: values.value.town, ...paging.value }
   })),
-  { watch: [searchedText, town, page] }
+  { watch: sources }
 )
 
 // Towns come from the Customers' Branches. The API has no list of towns yet (#33), so
@@ -60,7 +30,7 @@ const { data: towns } = await useAsyncData('clientes-localidades', async () => {
   return [...names.values()].sort((a, b) => a.localeCompare(b, 'es-AR'))
 }, { default: () => [] })
 
-const hasFilters = computed(() => !!searchedText.value || !!town.value)
+const hasFilters = computed(() => !!searched.value || !!values.value.town)
 
 function customerSubtitle(customer: Customer) {
   return [customerTowns(customer).join(', '), customer.cuit].filter(Boolean).join(' · ')
@@ -158,10 +128,10 @@ function customerSubtitle(customer: Customer) {
         </UPageList>
 
         <UPagination
-          v-if="customers.total > PAGE_SIZE"
+          v-if="customers.total > pageSize"
           v-model:page="page"
           :total="customers.total"
-          :items-per-page="PAGE_SIZE"
+          :items-per-page="pageSize"
           class="self-center"
         />
       </template>

@@ -52,6 +52,60 @@ test('the owner filters Customers by town', async ({ page, createOwner, signIn, 
   await expect(page).toHaveURL('/clientes?localidad=Isla+Verde')
 })
 
+test('the owner searches Customers and the search stays in the URL', async ({ page, createOwner, signIn, createCustomer }) => {
+  const userId = await createOwner('Gio Pack')
+  await createCustomer(userId, { name: 'Kiosco La Esquina', branches: [{ address: 'Belgrano 50', city: 'Corral de Bustos' }] })
+  await createCustomer(userId, { name: 'Supermercado Isla', branches: [{ address: 'Mitre 900', city: 'Isla Verde' }] })
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+
+  await page.goto('/clientes')
+  const search = page.getByRole('searchbox', { name: 'Buscar por nombre o CUIT' })
+  await search.fill('kiosco')
+  await expect(page).toHaveURL('/clientes?q=kiosco')
+  await expect(page.getByRole('link', { name: /Supermercado Isla/ })).toHaveCount(0)
+
+  // Coming back from a Customer finds the list as it was left.
+  await page.getByRole('link', { name: /Kiosco La Esquina/ }).click()
+  await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/)
+  await page.goBack()
+  await expect(search).toHaveValue('kiosco')
+  await expect(page.getByRole('link', { name: /Kiosco La Esquina/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Supermercado Isla/ })).toHaveCount(0)
+})
+
+test('saving a new Customer sends it once and shows the API\'s field errors on the form', async ({ page, createOwner, signIn }) => {
+  const userId = await createOwner('Gio Pack')
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+
+  // The form validates with the API's own schemas, so a field error the API finds is stubbed.
+  let posts = 0
+  await page.route(/\/customers$/, async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    posts++
+    await new Promise(resolve => setTimeout(resolve, 500))
+    await route.fulfill({
+      status: 400,
+      json: { error: { code: 'validation_error', message: 'Revisá los datos', details: { name: ['Ya hay un cliente con ese nombre'] } } }
+    })
+  })
+
+  await page.goto('/clientes/nuevo')
+  await page.getByRole('textbox', { name: 'Nombre' }).fill('Kiosco La Esquina')
+  await page.getByRole('textbox', { name: 'Dirección' }).fill('Belgrano 50')
+  await page.getByRole('textbox', { name: 'Localidad' }).fill('Corral de Bustos')
+  // A double tap: both clicks land before the page re-renders the button as loading.
+  await page.getByRole('button', { name: 'Guardar cliente' }).evaluate((button: HTMLButtonElement) => {
+    button.click()
+    button.click()
+  })
+
+  await expect(page.getByText('Ya hay un cliente con ese nombre')).toBeVisible()
+  await expect(page).toHaveURL('/clientes/nuevo')
+  expect(posts).toBe(1)
+})
+
 test('a wrong CUIT is caught before saving', async ({ page, createOwner, signIn }) => {
   const userId = await createOwner('Gio Pack')
   await signIn(userId)

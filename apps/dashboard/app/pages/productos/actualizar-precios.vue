@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FormSubmitEvent, TableColumn } from '@nuxt/ui'
+import type { TableColumn } from '@nuxt/ui'
 import type { z } from 'zod'
 import { categoryPriceUpdateFormSchema, type CategoryPriceUpdatePlan, type PriceUpdateDirection } from '~/utils/products'
 
@@ -30,7 +30,6 @@ const directionItems: { label: string, value: PriceUpdateDirection }[] = [
  * recomputes from the Prices at that moment, which only differ if one changed in between.
  */
 const plan = ref<CategoryPriceUpdatePlan | null>(null)
-const previewing = ref(false)
 const applying = ref(false)
 
 // Changing the form after a preview makes it stale: it has to be previewed again before applying.
@@ -38,19 +37,11 @@ watch(state, () => {
   plan.value = null
 })
 
-async function onPreview({ data }: FormSubmitEvent<z.output<typeof categoryPriceUpdateFormSchema>>) {
-  previewing.value = true
-  try {
-    plan.value = await request(
-      c => c.categories[':id']['price-update'].preview.$post({ param: { id: data.categoryId }, json: { percent: data.percent } }),
-      { form: form.value }
-    )
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    previewing.value = false
-  }
-}
+const { saving: previewing, onSubmit: onPreview } = useFormSubmit<z.output<typeof categoryPriceUpdateFormSchema>>(form, async (data, formRequest) => {
+  plan.value = await formRequest(
+    c => c.categories[':id']['price-update'].preview.$post({ param: { id: data.categoryId }, json: { percent: data.percent } })
+  )
+})
 
 async function onApply() {
   if (!plan.value) return

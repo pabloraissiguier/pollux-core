@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import type { Product } from '~/utils/products'
 import { signedUnits, stockAdjustmentFormSchema, stockAdjustmentFormState, stockAdjustmentReasonItems, unitsInputSchema, type AdjustmentDirection } from '~/utils/stock'
@@ -9,11 +8,9 @@ const props = defineProps<{ product: Product }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [product: Product] }>()
 
-const { request } = useApi()
 const toast = useToast()
 const form = useTemplateRef('form')
 const state = reactive(stockAdjustmentFormState())
-const saving = ref(false)
 
 const directionItems: { value: AdjustmentDirection, label: string, description: string }[] = [
   { value: 'add', label: 'Sumar', description: 'Entran unidades' },
@@ -36,29 +33,19 @@ const resultingOnHand = computed(() => {
   return props.product.stock.onHand + signedUnits(state.direction, quantity.data)
 })
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof stockAdjustmentFormSchema>>) {
-  saving.value = true
-  try {
-    const product = await request(
-      c => c.stock.adjustments.$post({
-        json: {
-          productId: props.product.id,
-          quantity: signedUnits(data.direction, data.quantity),
-          reason: data.reason,
-          notes: data.notes
-        }
-      }),
-      { form: form.value }
-    )
-    emit('saved', product)
-    open.value = false
-    toast.add({ title: 'Stock ajustado', color: 'success', icon: 'i-lucide-check' })
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    saving.value = false
-  }
-}
+const { saving, onSubmit } = useFormSubmit<z.output<typeof stockAdjustmentFormSchema>>(form, async (data, request) => {
+  const product = await request(c => c.stock.adjustments.$post({
+    json: {
+      productId: props.product.id,
+      quantity: signedUnits(data.direction, data.quantity),
+      reason: data.reason,
+      notes: data.notes
+    }
+  }))
+  emit('saved', product)
+  open.value = false
+  toast.add({ title: 'Stock ajustado', color: 'success', icon: 'i-lucide-check' })
+})
 </script>
 
 <template>

@@ -137,3 +137,45 @@ test('the owner renames a Category', async ({ page, createOwner, signIn }) => {
   await dialog.getByRole('button', { name: 'Guardar nombre' }).click()
   await expect(page.getByText('Ya existe una categoría con ese nombre', { exact: true })).toBeVisible()
 })
+
+test('the catalog keeps its search, Category, inactive switch and page in the URL', async ({ page, createOwner, signIn, callApi }) => {
+  const userId = await createOwner('Gio Pack')
+  const vasos = await callApi(userId, 'POST', '/categories', { name: 'Vasos' })
+  // "Bolsa negra" sorts first, so 51 Vasos leave "Vaso 50" and "Vaso 51" on the second page.
+  await callApi(userId, 'POST', '/products', { code: 'BOL-1', name: 'Bolsa negra', price: '50' })
+  for (let n = 1; n <= 51; n++) {
+    const number = String(n).padStart(2, '0')
+    await callApi(userId, 'POST', '/products', { code: `VAS-${number}`, name: `Vaso ${number}`, categoryId: vasos.id, price: '100' })
+  }
+  const old = await callApi(userId, 'POST', '/products', { code: 'VAS-OLD', name: 'Vaso viejo', categoryId: vasos.id, price: '100' })
+  await callApi(userId, 'PATCH', `/products/${old.id}`, { isActive: false })
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+
+  await page.goto('/productos?pagina=2')
+  await expect(page.getByRole('link', { name: /Vaso 51/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Bolsa negra/ })).toHaveCount(0)
+
+  // A search starts over from the first page.
+  const search = page.getByRole('searchbox', { name: 'Buscar por nombre, código o marca' })
+  await search.fill('vaso 0')
+  await expect(page).toHaveURL('/productos?q=vaso+0')
+  await expect(page.getByRole('link', { name: /Vaso 01/ })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Categoría' }).click()
+  await page.getByRole('option', { name: 'Vasos' }).click()
+  await expect(page).toHaveURL(`/productos?q=vaso+0&categoria=${vasos.id}`)
+
+  await search.fill('viejo')
+  await expect(page.getByText('No encontramos productos')).toBeVisible()
+  await page.getByRole('switch', { name: 'Mostrar inactivos' }).click()
+  await expect(page).toHaveURL(`/productos?q=viejo&categoria=${vasos.id}&inactivos=1`)
+
+  // Coming back from a Product finds the list as it was left.
+  await page.getByRole('link', { name: /Vaso viejo/ }).click()
+  await expect(page.getByRole('heading', { name: 'Vaso viejo', level: 1 })).toBeVisible()
+  await page.goBack()
+  await expect(search).toHaveValue('viejo')
+  await expect(page.getByRole('switch', { name: 'Mostrar inactivos' })).toBeChecked()
+  await expect(page.getByRole('link', { name: /Vaso viejo/ })).toBeVisible()
+})

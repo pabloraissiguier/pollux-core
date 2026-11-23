@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
+import type { FormErrorEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import type { Product } from '~/utils/products'
 import { initialCountFormSchema, typedCountTotal } from '~/utils/stock'
@@ -52,29 +52,22 @@ watch(shown, async () => {
   if (form.value?.getErrors().length) await form.value.validate({ silent: true })
 })
 const typed = computed(() => typedCountTotal(state.counts))
-const saving = ref(false)
 
-async function onSubmit({ data: items }: FormSubmitEvent<z.output<typeof initialCountFormSchema>>) {
+// No form for API errors: the API names the counts `items.0.quantity`, so they go to a toast.
+const { saving, onSubmit } = useFormSubmit<z.output<typeof initialCountFormSchema>>(null, async (items, formRequest) => {
   if (!items.length) return
-  saving.value = true
-  try {
-    const result = await request(c => c.stock['initial-count'].$post({ json: { items } }))
-    const saved = new Map(result.items.map(item => [item.product.id, item.product]))
-    products.value = products.value?.map(product => saved.get(product.id) ?? product)
-    state.counts = {}
-    const changed = result.items.filter(item => item.difference !== 0).length
-    toast.add({
-      title: 'Conteo guardado',
-      description: `${formatUnits(result.items.length)} ${result.items.length === 1 ? 'producto contado' : 'productos contados'}, ${formatUnits(changed)} con diferencia.`,
-      color: 'success',
-      icon: 'i-lucide-check'
-    })
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    saving.value = false
-  }
-}
+  const result = await formRequest(c => c.stock['initial-count'].$post({ json: { items } }))
+  const saved = new Map(result.items.map(item => [item.product.id, item.product]))
+  products.value = products.value?.map(product => saved.get(product.id) ?? product)
+  state.counts = {}
+  const changed = result.items.filter(item => item.difference !== 0).length
+  toast.add({
+    title: 'Conteo guardado',
+    description: `${formatUnits(result.items.length)} ${result.items.length === 1 ? 'producto contado' : 'productos contados'}, ${formatUnits(changed)} con diferencia.`,
+    color: 'success',
+    icon: 'i-lucide-check'
+  })
+})
 
 // A wrong count may sit in a row the filters hide: show every row and go to the first error.
 async function onError(event: FormErrorEvent) {

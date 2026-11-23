@@ -3,45 +3,15 @@ import type { Supplier } from '~/utils/purchases'
 
 useSeoMeta({ title: 'Proveedores' })
 
-const PAGE_SIZE = 50
-const SEARCH_DELAY_MS = 300
-
-const route = useRoute()
-const router = useRouter()
 const { request } = useApi()
 
-const queryText = (value: unknown) => (typeof value === 'string' ? value : '')
-
 // The search lives in the URL, so a reload or the back button keeps it.
-const search = ref(queryText(route.query.q))
-const page = ref(Number(route.query.pagina) || 1)
-
-// The search waits for a pause in typing instead of asking the API on every key.
-const searchedText = ref(search.value)
-let searchTimer: ReturnType<typeof setTimeout> | undefined
-watch(search, (value) => {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    searchedText.value = value.trim()
-    page.value = 1
-  }, SEARCH_DELAY_MS)
-})
-onBeforeUnmount(() => clearTimeout(searchTimer))
-
-watch([searchedText, page], ([q, pagina]) => {
-  router.replace({ query: { q: q || undefined, pagina: pagina > 1 ? pagina : undefined } })
-})
+const { search, searched, page, pageSize, paging, sources } = useListQuery({ search: 'q' })
 
 const { data: suppliers, status, refresh } = await useAsyncData(
   'proveedores',
-  () => request(c => c.suppliers.$get({
-    query: {
-      q: searchedText.value || undefined,
-      limit: String(PAGE_SIZE),
-      offset: String((page.value - 1) * PAGE_SIZE)
-    }
-  })),
-  { watch: [searchedText, page] }
+  () => request(c => c.suppliers.$get({ query: { q: searched.value || undefined, ...paging.value } })),
+  { watch: sources }
 )
 
 // One modal for both: `editing` null is "Nuevo proveedor".
@@ -107,7 +77,7 @@ function supplierSubtitle(supplier: Supplier) {
       />
 
       <UEmpty
-        v-else-if="!suppliers?.items.length && searchedText"
+        v-else-if="!suppliers?.items.length && searched"
         icon="i-lucide-search-x"
         title="No encontramos proveedores"
         description="Probá con otro nombre o CUIT."
@@ -146,10 +116,10 @@ function supplierSubtitle(supplier: Supplier) {
         </UPageList>
 
         <UPagination
-          v-if="suppliers.total > PAGE_SIZE"
+          v-if="suppliers.total > pageSize"
           v-model:page="page"
           :total="suppliers.total"
-          :items-per-page="PAGE_SIZE"
+          :items-per-page="pageSize"
           class="self-center"
         />
       </template>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { supplierCreateSchema } from '@pollux/contracts'
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import type { Supplier } from '~/utils/purchases'
 
@@ -12,31 +11,21 @@ const props = defineProps<{ supplier?: Supplier | null }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [supplier: Supplier] }>()
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 const state = reactive(supplierFormState(props.supplier))
-const saving = ref(false)
 
 // Each opening starts from what is saved, not from an edit that was abandoned.
 watch(open, (isOpen) => {
   if (isOpen) Object.assign(state, supplierFormState(props.supplier))
 })
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof supplierCreateSchema>>) {
-  if (saving.value) return
-  saving.value = true
-  try {
-    const supplier = props.supplier
-      ? await request(c => c.suppliers[':id'].$patch({ param: { id: props.supplier!.id }, json: data }), { form: form.value })
-      : await request(c => c.suppliers.$post({ json: data }), { form: form.value })
-    emit('saved', supplier)
-    open.value = false
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    saving.value = false
-  }
-}
+const { saving, onSubmit } = useFormSubmit<z.output<typeof supplierCreateSchema>>(form, async (data, request) => {
+  const supplier = props.supplier
+    ? await request(c => c.suppliers[':id'].$patch({ param: { id: props.supplier!.id }, json: data }))
+    : await request(c => c.suppliers.$post({ json: data }))
+  emit('saved', supplier)
+  open.value = false
+})
 </script>
 
 <template>

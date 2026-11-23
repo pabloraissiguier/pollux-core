@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { branchSchema } from '@pollux/contracts'
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import type { Branch, Customer } from '~/utils/customers'
 
@@ -12,7 +11,6 @@ const props = defineProps<{ customerId: string, branch?: Branch | null }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [customer: Customer] }>()
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 const state = reactive(branchFormState(props.branch ?? undefined))
 
@@ -20,20 +18,15 @@ watch(open, (isOpen) => {
   if (isOpen) Object.assign(state, branchFormState(props.branch ?? undefined))
 })
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof branchSchema>>) {
+const { saving, onSubmit } = useFormSubmit<z.output<typeof branchSchema>>(form, async (data, request) => {
   const id = props.customerId
   const branchId = props.branch?.id
-  const options = { form: form.value }
-  try {
-    const customer = branchId
-      ? await request(c => c.customers[':id'].branches[':branchId'].$patch({ param: { id, branchId }, json: data }), options)
-      : await request(c => c.customers[':id'].branches.$post({ param: { id }, json: data }), options)
-    emit('saved', customer)
-    open.value = false
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  }
-}
+  const customer = branchId
+    ? await request(c => c.customers[':id'].branches[':branchId'].$patch({ param: { id, branchId }, json: data }))
+    : await request(c => c.customers[':id'].branches.$post({ param: { id }, json: data }))
+  emit('saved', customer)
+  open.value = false
+})
 </script>
 
 <template>
@@ -104,6 +97,7 @@ async function onSubmit({ data }: FormSubmitEvent<z.output<typeof branchSchema>>
           :label="branch ? 'Guardar sucursal' : 'Agregar sucursal'"
           icon="i-lucide-check"
           block
+          :loading="saving"
         />
       </UForm>
     </template>

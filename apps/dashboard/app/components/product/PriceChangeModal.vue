@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { priceChangeFormSchema, type Product } from '~/utils/products'
 
@@ -8,30 +7,17 @@ const props = defineProps<{ product: Product }>()
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [product: Product] }>()
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 const state = reactive({ price: '' })
-const saving = ref(false)
 
 watch(open, (isOpen) => {
   if (isOpen) state.price = priceForInput(props.product.price)
 })
 
-async function onSubmit({ data }: FormSubmitEvent<z.output<typeof priceChangeFormSchema>>) {
-  saving.value = true
-  try {
-    const product = await request(
-      c => c.products[':id'].$patch({ param: { id: props.product.id }, json: { price: data.price } }),
-      { form: form.value }
-    )
-    emit('saved', product)
-    open.value = false
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    saving.value = false
-  }
-}
+const { saving, onSubmit } = useFormSubmit<z.output<typeof priceChangeFormSchema>>(form, async (data, request) => {
+  emit('saved', await request(c => c.products[':id'].$patch({ param: { id: props.product.id }, json: { price: data.price } })))
+  open.value = false
+})
 </script>
 
 <template>

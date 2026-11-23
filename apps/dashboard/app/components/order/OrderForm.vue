@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ButtonProps, FormSubmitEvent } from '@nuxt/ui'
+import type { ButtonProps } from '@nuxt/ui'
 import type { CustomerOption } from '~/utils/customers'
 import type { Order, OrderFormOutput, OrderFormState, SavedOrder } from '~/utils/orders'
 import type { Product } from '~/utils/products'
@@ -15,7 +15,6 @@ import type { Product } from '~/utils/products'
 const props = defineProps<{ order?: Order, customer?: CustomerOption, available?: Record<string, number> }>()
 const emit = defineEmits<{ saved: [order: SavedOrder] }>()
 
-const { request } = useApi()
 const form = useTemplateRef('form')
 
 const state = reactive<OrderFormState>(props.order
@@ -63,25 +62,15 @@ function removeLine(index: number) {
 }
 
 // Two taps on Save must not take the Order twice: the second one finds it saving.
-const saving = ref(false)
-
-async function onSubmit({ data }: FormSubmitEvent<OrderFormOutput>) {
-  if (saving.value) return
-  saving.value = true
-  try {
-    const order = props.order
-    if (order) {
-      const { customerId: _fixed, ...changes } = data
-      emit('saved', await request(c => c.orders[':id'].$patch({ param: { id: order.id }, json: changes }), { form: form.value }))
-    } else {
-      emit('saved', await request(c => c.orders.$post({ json: data }), { form: form.value }))
-    }
-  } catch (error) {
-    if (!(error instanceof ApiRequestError)) throw error
-  } finally {
-    saving.value = false
+const { saving, onSubmit } = useFormSubmit<OrderFormOutput>(form, async (data, request) => {
+  const order = props.order
+  if (order) {
+    const { customerId: _fixed, ...changes } = data
+    emit('saved', await request(c => c.orders[':id'].$patch({ param: { id: order.id }, json: changes })))
+  } else {
+    emit('saved', await request(c => c.orders.$post({ json: data })))
   }
-}
+})
 </script>
 
 <template>
