@@ -1,5 +1,5 @@
 import type { FormError } from '@nuxt/ui'
-import type { AppType } from 'api/src/app'
+import type { AppType } from 'api/src/create-app'
 import { hc, type ClientResponse } from 'hono/client'
 import type { RouteLocationRaw } from 'vue-router'
 

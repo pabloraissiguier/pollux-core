@@ -5,7 +5,7 @@
  * - the Node server (`src/server.ts`).
  */
 import { Hono } from 'hono'
-import { createApp } from './app'
+import { createApp } from './create-app'
 import { createSupabaseVerifier, createTestVerifier } from './auth/verifier'
 import { createDb } from './db'
 import { readEnv } from './env'
@@ -29,4 +29,4 @@ const verifyToken = env.API_AUTH_VERIFIER === 'test'
 const app = new Hono().route('/api', createApp({ db, verifyToken, corsOrigins: env.API_CORS_ORIGINS }))
 
 export default app
-export type { AppType } from './app'
+export type { AppType } from './create-app'

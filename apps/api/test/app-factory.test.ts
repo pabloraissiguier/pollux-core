@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createApp } from '../src/app'
+import { createApp } from '../src/create-app'
 import { createSupabaseVerifier, createTestVerifier } from '../src/auth/verifier'
 import { createDb } from '../src/db'
 import { testDatabaseUrl } from './test-db'
