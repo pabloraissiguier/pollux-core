@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { statementAmountText, statementEntryLabel } from '~/utils/balance'
+import { balanceTone, signedBalanceText, statementAmountText, statementEntryLabel } from '~/utils/balance'
 import type { Statement } from '~/utils/balance'
 
 /**
@@ -186,8 +186,8 @@ const hasRange = computed(() => !!fromDay.value || !!toDay.value)
                   <span class="text-sm text-muted tabular-nums">{{ formatDate(entry.entryDate) }}</span>
                 </span>
                 <span class="flex shrink-0 flex-col items-end tabular-nums">
-                  <span class="text-highlighted">{{ statementAmountText(entry.amount) }}</span>
-                  <span class="text-sm text-muted">Saldo {{ formatMoney(entry.balance) }}</span>
+                  <span :class="balanceTone(entry.amount)">{{ statementAmountText(entry.amount) }}</span>
+                  <span class="text-sm text-muted">Saldo {{ signedBalanceText(entry.balance) }}</span>
                 </span>
               </li>
             </ul>

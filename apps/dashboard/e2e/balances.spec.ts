@@ -24,11 +24,11 @@ test('the owner sees who owes, largest first, with the grand total', { tag: '@de
   const rows = page.getByRole('list', { name: 'Clientes con saldo' }).getByRole('listitem')
   await expect(rows).toHaveCount(3)
   await expect(rows.nth(0)).toContainText('Almacén Don José')
-  await expect(rows.nth(0)).toContainText('Debe $ 12.000,50')
+  await expect(rows.nth(0)).toContainText('Debe -$ 12.000,50')
   await expect(rows.nth(1)).toContainText('Kiosco La Esquina')
-  await expect(rows.nth(1)).toContainText('Debe $ 1.500,00')
+  await expect(rows.nth(1)).toContainText('Debe -$ 1.500,00')
   await expect(rows.nth(2)).toContainText('Bar El Paso')
-  await expect(rows.nth(2)).toContainText('A favor $ 300,00')
+  await expect(rows.nth(2)).toContainText('A favor +$ 300,00')
 
   // Collecting from a row: the sheet already knows the Customer, and the list follows.
   await rows.nth(1).getByRole('button', { name: 'Registrar pago de Kiosco La Esquina' }).click()
@@ -44,7 +44,7 @@ test('the owner sees who owes, largest first, with the grand total', { tag: '@de
   // A row opens that Customer's statement.
   await rows.nth(0).getByRole('link', { name: 'Almacén Don José' }).click()
   await expect(page).toHaveURL(`/cuentas-corrientes/${almacen.id}`)
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 12.000,50')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 12.000,50')
 })
 
 test('the owner enters a Customer\'s Opening balance once, from the Customer page', async ({ page, createOwner, signIn, callApi }) => {
@@ -74,7 +74,7 @@ test('the owner enters a Customer\'s Opening balance once, from the Customer pag
   await modal.getByLabel('Fecha').fill('2026-01-10')
   await modal.getByRole('button', { name: 'Guardar saldo inicial' }).click()
   await expect(modal).toBeHidden()
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 2.500,50')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 2.500,50')
 
   // Once it's there, it's no longer offered: corrections are Balance adjustments.
   await page.getByRole('button', { name: 'Más acciones' }).click()
@@ -93,7 +93,7 @@ test('the owner enters a Customer\'s Opening balance once, from the Customer pag
   await expect(entries).toHaveCount(1)
   await expect(entries.first()).toContainText('Saldo inicial')
   await expect(entries.first()).toContainText('10/01/2026')
-  await expect(entries.first()).toContainText('Debe $ 2.500,50')
+  await expect(entries.first()).toContainText('Debe -$ 2.500,50')
 })
 
 test('the owner prints a statement for a date range', { tag: '@desktop' }, async ({ page, createOwner, signIn, callApi }) => {
@@ -188,7 +188,7 @@ test('the owner adjusts a Balance with a reason and sees it on the statement', {
   const entries = page.getByRole('list', { name: 'Movimientos de cuenta' }).getByRole('listitem')
   await expect(entries).toHaveCount(2)
   await expect(entries.nth(1)).toContainText('Ajuste: Descuento por pronto pago')
-  await expect(entries.nth(1)).toContainText('Haber $ 200,00')
-  await expect(entries.nth(1)).toContainText('Saldo $ 1.300,00')
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 1.300,00')
+  await expect(entries.nth(1)).toContainText('Haber +$ 200,00')
+  await expect(entries.nth(1)).toContainText('Saldo -$ 1.300,00')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 1.300,00')
 })

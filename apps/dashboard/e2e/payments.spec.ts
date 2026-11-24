@@ -27,7 +27,7 @@ test('the owner delivers an Order with a partial cash Payment and sees the remai
 
   // Cash: the amount starts at the total, and a partial Payment is a quick edit.
   await sheet.getByRole('radio', { name: 'Efectivo' }).check()
-  await expect(sheet.getByLabel('Importe')).toHaveValue('2469,00')
+  await expect(sheet.getByLabel('Importe')).toHaveValue('2.469,00')
   await sheet.getByLabel('Importe').fill('1.000,50')
 
   // The Delivered date cannot be in the future.
@@ -39,7 +39,7 @@ test('the owner delivers an Order with a partial cash Payment and sees the remai
 
   await expect(sheet).toContainText('Pedido entregado')
   await expect(sheet).toContainText('Pago en efectivo de $ 1.000,50')
-  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('$ 1.468,50')
+  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('-$ 1.468,50')
   await sheet.getByRole('button', { name: 'Listo' }).click()
 
   // The Order lists its Payments.
@@ -50,7 +50,7 @@ test('the owner delivers an Order with a partial cash Payment and sees the remai
 
   // The Customer's page shows what is still owed.
   await page.getByRole('link', { name: 'Kiosco La Esquina' }).click()
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 1.468,50')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 1.468,50')
 })
 
 test('the owner records a standalone Payment from the Customer page and voids it', async ({ page, createOwner, signIn, callApi }) => {
@@ -64,7 +64,7 @@ test('the owner records a standalone Payment from the Customer page and voids it
   await expect(page).toHaveURL('/')
 
   await page.goto(`/clientes/${kiosco.id}`)
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 2.000,00')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 2.000,00')
   await page.getByRole('button', { name: 'Registrar pago' }).click()
   const sheet = page.getByRole('dialog', { name: 'Registrar pago' })
   await expect(sheet).toContainText('Kiosco La Esquina')
@@ -81,12 +81,12 @@ test('the owner records a standalone Payment from the Customer page and voids it
   await sheet.getByRole('button', { name: 'Registrar pago' }).click()
 
   await expect(sheet).toContainText('Pago registrado')
-  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('$ 1.250,00')
+  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('-$ 1.250,00')
   await sheet.getByRole('button', { name: 'Listo' }).click()
   await expect(sheet).toBeHidden()
 
   // The page shows the new Balance and the Payment.
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 1.250,00')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 1.250,00')
   const recent = page.getByRole('region', { name: 'Pagos recientes' })
   const payment = recent.getByRole('listitem').first()
   await expect(payment).toContainText('Transferencia')
@@ -106,17 +106,17 @@ test('the owner records a standalone Payment from the Customer page and voids it
   await expect(payment).toContainText('Anulado')
   await expect(payment).toContainText('Transferencia rechazada')
   await expect(payment.getByRole('button', { name: 'Anular pago' })).toHaveCount(0)
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 2.000,00')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 2.000,00')
 
   // The statement shows the Payment and its reversal.
   await page.getByRole('link', { name: 'Ver resumen de cuenta' }).click()
   const entries = page.getByRole('list', { name: 'Movimientos de cuenta' }).getByRole('listitem')
   await expect(entries).toHaveCount(3)
   await expect(entries.nth(1)).toContainText('Pago por transferencia')
-  await expect(entries.nth(1)).toContainText('Haber $ 750,00')
+  await expect(entries.nth(1)).toContainText('Haber +$ 750,00')
   await expect(entries.nth(2)).toContainText('Pago anulado')
-  await expect(entries.nth(2)).toContainText('Debe $ 750,00')
-  await expect(entries.nth(2)).toContainText('Saldo $ 2.000,00')
+  await expect(entries.nth(2)).toContainText('Debe -$ 750,00')
+  await expect(entries.nth(2)).toContainText('Saldo -$ 2.000,00')
 
   // Registrar pago is also at hand from the statement, and the statement follows it.
   await page.getByRole('button', { name: 'Registrar pago' }).click()

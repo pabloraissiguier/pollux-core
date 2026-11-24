@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { balanceAmountText, debitOrCredit } from '~/utils/balance'
+import { balanceAmountText, balanceTone } from '~/utils/balance'
 
 /**
  * Cuentas corrientes: who to collect from. Every Customer whose Balance isn't zero, largest
@@ -86,7 +86,7 @@ async function pay(customer: { id: string, name: string }) {
                   <span class="truncate font-medium text-highlighted">{{ row.customer.name }}</span>
                   <span
                     class="shrink-0 tabular-nums"
-                    :class="debitOrCredit(row.balance).side === 'credit' ? 'text-success' : 'text-highlighted'"
+                    :class="balanceTone(row.balance)"
                   >{{ balanceAmountText(row.balance) }}</span>
                 </ULink>
                 <UButton

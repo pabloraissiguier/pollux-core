@@ -3,6 +3,7 @@ import {
   balanceEntryTypeLabels,
   formatDate,
   formatMoney,
+  formatMoneyInput,
   formatPercent,
   formatUnits,
   formatUnitsChange,
@@ -83,6 +84,41 @@ describe('formatDate', () => {
 
   it('refuses something that is not a date', () => {
     expect(() => formatDate('21/11/2026')).toThrow()
+  })
+})
+
+describe('formatMoneyInput', () => {
+  it('groups thousands with dots as the amount is typed', () => {
+    expect(formatMoneyInput('1')).toBe('1')
+    expect(formatMoneyInput('1000')).toBe('1.000')
+    expect(formatMoneyInput('1.0000')).toBe('10.000')
+    expect(formatMoneyInput('1234567')).toBe('1.234.567')
+    expect(formatMoneyInput('12.34')).toBe('1.234')
+  })
+
+  it('keeps the comma as the decimal separator, with up to two decimals', () => {
+    expect(formatMoneyInput('1234,')).toBe('1.234,')
+    expect(formatMoneyInput('1234,5')).toBe('1.234,5')
+    expect(formatMoneyInput('1.234,567')).toBe('1.234,56')
+    expect(formatMoneyInput(',5')).toBe('0,5')
+    expect(formatMoneyInput('1,2,3')).toBe('1,23')
+  })
+
+  it('reads a dot typed last as the decimal separator, for keypads without a comma', () => {
+    expect(formatMoneyInput('1234.')).toBe('1.234,')
+    expect(formatMoneyInput('1.234.')).toBe('1.234,')
+  })
+
+  it('drops anything else and leading zeros', () => {
+    expect(formatMoneyInput('')).toBe('')
+    expect(formatMoneyInput('$ 1a2')).toBe('12')
+    expect(formatMoneyInput('0012')).toBe('12')
+    expect(formatMoneyInput('0,50')).toBe('0,50')
+  })
+
+  it('round-trips through parseDecimalInput', () => {
+    expect(parseDecimalInput(formatMoneyInput('1234567,8'))).toBe('1234567.8')
+    expect(parseDecimalInput(formatMoneyInput('1000'))).toBe('1000')
   })
 })
 

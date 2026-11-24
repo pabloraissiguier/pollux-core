@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { balanceAdjustmentFormSchema, balanceAfter, balanceAmountText, balanceCaption, debitOrCredit, openingBalanceFormSchema, statementAmountText, statementEntryLabel } from '../app/utils/balance'
+import { balanceAdjustmentFormSchema, balanceAfter, balanceAmountText, balanceCaption, balanceTone, debitOrCredit, signedBalanceText, openingBalanceFormSchema, statementAmountText, statementEntryLabel } from '../app/utils/balance'
 import type { StatementEntryLabelInput } from '../app/utils/balance'
 
 const entry = (overrides: Partial<StatementEntryLabelInput>): StatementEntryLabelInput => ({
@@ -51,8 +51,24 @@ const NBSP = String.fromCharCode(0xA0)
 
 describe('statementAmountText', () => {
   it('says which column an amount goes in, without its sign', () => {
-    expect(statementAmountText('2469.00')).toBe(`Debe $${NBSP}2.469,00`)
-    expect(statementAmountText('-100.00')).toBe(`Haber $${NBSP}100,00`)
+    expect(statementAmountText('2469.00')).toBe(`Debe -$${NBSP}2.469,00`)
+    expect(statementAmountText('-100.00')).toBe(`Haber +$${NBSP}100,00`)
+  })
+})
+
+describe('signedBalanceText', () => {
+  it('signs what the Customer owes with a minus and what is in their favor with a plus', () => {
+    expect(signedBalanceText('2969.00')).toBe(`-$${NBSP}2.969,00`)
+    expect(signedBalanceText('-50.00')).toBe(`+$${NBSP}50,00`)
+    expect(signedBalanceText('0.00')).toBe(`$${NBSP}0,00`)
+  })
+})
+
+describe('balanceTone', () => {
+  it('is red for debe, green for haber and neutral at zero', () => {
+    expect(balanceTone('2969.00')).toBe('text-error')
+    expect(balanceTone('-50.00')).toBe('text-success')
+    expect(balanceTone('0.00')).toBe('text-highlighted')
   })
 })
 
@@ -66,8 +82,8 @@ describe('balanceCaption', () => {
 
 describe('balanceAmountText', () => {
   it('says a Balance in a list with its side', () => {
-    expect(balanceAmountText('1500.00')).toBe(`Debe $${NBSP}1.500,00`)
-    expect(balanceAmountText('-300.00')).toBe(`A favor $${NBSP}300,00`)
+    expect(balanceAmountText('1500.00')).toBe(`Debe -$${NBSP}1.500,00`)
+    expect(balanceAmountText('-300.00')).toBe(`A favor +$${NBSP}300,00`)
     expect(balanceAmountText('0.00')).toBe('Al día')
   })
 })

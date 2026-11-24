@@ -20,7 +20,7 @@ test('an opening Balance of "12.500" and a Payment of "1.000" leave the Balance 
   await opening.getByLabel('Importe').fill('12.500')
   await opening.getByRole('button', { name: 'Guardar saldo inicial' }).click()
   await expect(opening).toBeHidden()
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 12.500,00')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 12.500,00')
 
   await page.getByRole('button', { name: 'Registrar pago' }).click()
   const sheet = page.getByRole('dialog', { name: 'Registrar pago' })
@@ -28,9 +28,9 @@ test('an opening Balance of "12.500" and a Payment of "1.000" leave the Balance 
   await sheet.getByRole('button', { name: 'Registrar pago' }).click()
 
   await expect(sheet).toContainText('Pago en efectivo de $ 1.000,00')
-  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('$ 11.500,00')
+  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('-$ 11.500,00')
   await sheet.getByRole('button', { name: 'Listo' }).click()
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 11.500,00')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 11.500,00')
 })
 
 test('a Price and a Purchase unit cost of "1.000" are a thousand', async ({ page, createOwner, signIn, callApi }) => {
@@ -61,4 +61,25 @@ test('a Price and a Purchase unit cost of "1.000" are a thousand', async ({ page
   await page.getByRole('button', { name: 'Registrar compra' }).click()
   await expect(page).toHaveURL(/\/compras\/[0-9a-f-]{36}$/)
   await expect(page.getByRole('region', { name: 'Productos' }).getByRole('listitem').first()).toContainText('2 × $ 1.000,00')
+})
+
+test('an amount is grouped with dots and takes a comma for decimals as it is typed', async ({ page, createOwner, signIn, callApi }) => {
+  const userId = await createOwner('Gio Pack')
+  const kiosco = await callApi<CustomerWithBranches>(userId, 'POST', '/customers', {
+    name: 'Kiosco La Esquina',
+    branches: [{ address: 'San Martín 100', city: 'Corral de Bustos' }]
+  })
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+
+  await page.goto(`/clientes/${kiosco.id}`)
+  await page.getByRole('button', { name: 'Registrar pago' }).click()
+  const amount = page.getByRole('dialog', { name: 'Registrar pago' }).getByLabel('Importe')
+  await amount.pressSequentially('1234567')
+  await expect(amount).toHaveValue('1.234.567')
+  await amount.pressSequentially(',509')
+  await expect(amount).toHaveValue('1.234.567,50')
+  await amount.fill('')
+  await amount.pressSequentially('2500.5')
+  await expect(amount).toHaveValue('2.500,5')
 })
