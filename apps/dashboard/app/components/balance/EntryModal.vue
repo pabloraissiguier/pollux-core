@@ -115,10 +115,8 @@ const { saving, onSubmit } = useFormSubmit<FormOutput>(form, async (data, reques
           :description="`Saldo: ${formatMoney(balance)}${resulting === null ? '' : ` → ${formatMoney(resulting)}`}`"
           required
         >
-          <UInput
+          <MoneyInput
             v-model="state.amount"
-            inputmode="decimal"
-            autocomplete="off"
             icon="i-lucide-dollar-sign"
             class="w-full"
           />

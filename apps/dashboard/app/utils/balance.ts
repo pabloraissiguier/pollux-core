@@ -59,17 +59,34 @@ export function debitOrCredit(amount: Money): { side: 'debit' | 'credit', amount
   return amount.startsWith('-') ? { side: 'credit', amount: amount.slice(1) } : { side: 'debit', amount }
 }
 
-/** A Statement amount in its column, in words: "Debe $ 500,00", "Haber $ 100,00". */
-export function statementAmountText(amount: Money): string {
+/**
+ * An amount or Balance with the sign the owner reads it by: debe with a minus ("-$ 500,00"), haber
+ * or a credit in the Customer's favor with a plus ("+$ 100,00"), zero with none. The opposite of
+ * the API's sign, where what the Customer owes is positive.
+ */
+export function signedBalanceText(amount: Money): string {
+  if (/^-?0\.00$/.test(amount)) return formatMoney('0.00')
   const { side, amount: unsigned } = debitOrCredit(amount)
-  return `${side === 'debit' ? 'Debe' : 'Haber'} ${formatMoney(unsigned)}`
+  return `${side === 'debit' ? '-' : '+'}${formatMoney(unsigned)}`
 }
 
-/** A Balance in a list, in words: "Debe $ 1.500,00", "A favor $ 300,00", "Al día". */
+/** The text color for an amount or Balance: red for debe, green for haber, neutral at zero. */
+export function balanceTone(amount: Money): 'text-error' | 'text-success' | 'text-highlighted' {
+  if (/^-?0\.00$/.test(amount)) return 'text-highlighted'
+  return debitOrCredit(amount).side === 'debit' ? 'text-error' : 'text-success'
+}
+
+/** A Statement amount in its column, in words and signed: "Debe -$ 500,00", "Haber +$ 100,00". */
+export function statementAmountText(amount: Money): string {
+  const side = debitOrCredit(amount).side
+  return `${side === 'debit' ? 'Debe' : 'Haber'} ${signedBalanceText(amount)}`
+}
+
+/** A Balance in a list, in words and signed: "Debe -$ 1.500,00", "A favor +$ 300,00", "Al día". */
 export function balanceAmountText(balance: Money): string {
   if (balance === '0.00') return 'Al día'
-  const { side, amount } = debitOrCredit(balance)
-  return `${side === 'debit' ? 'Debe' : 'A favor'} ${formatMoney(amount)}`
+  const side = debitOrCredit(balance).side
+  return `${side === 'debit' ? 'Debe' : 'A favor'} ${signedBalanceText(balance)}`
 }
 
 /** What a Balance means, in words, so it never rests on color: "Debe", "A favor del cliente", "Al día". */

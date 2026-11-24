@@ -76,10 +76,8 @@ const vatRates = computed(() => vatRateItems(state.value.vatRate))
     description="Final, con IVA incluido."
     required
   >
-    <UInput
+    <MoneyInput
       v-model="state.price"
-      inputmode="decimal"
-      autocomplete="off"
       placeholder="0,00"
       icon="i-lucide-dollar-sign"
       class="w-full"

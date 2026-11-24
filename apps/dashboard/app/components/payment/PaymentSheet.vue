@@ -166,10 +166,8 @@ const { saving: sending, onSubmit } = useFormSubmit<PaymentFormOutput>(null, asy
               :description="isDelivery ? 'Si paga una parte, cambialo.' : undefined"
               required
             >
-              <UInput
+              <MoneyInput
                 v-model="state.amount"
-                inputmode="decimal"
-                autocomplete="off"
                 icon="i-lucide-dollar-sign"
                 class="w-full"
               />

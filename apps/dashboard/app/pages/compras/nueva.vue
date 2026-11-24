@@ -219,17 +219,15 @@ function onError(event: FormErrorEvent) {
                 :name="`lines.${index}.unitCost`"
                 label="Costo unitario"
               >
-                <UInput
+                <MoneyInput
                   v-model="line.unitCost"
-                  inputmode="decimal"
-                  autocomplete="off"
                   enterkeyhint="next"
                   class="w-full"
                 >
                   <template #leading>
                     <span class="text-muted">$</span>
                   </template>
-                </UInput>
+                </MoneyInput>
               </UFormField>
             </div>
             <div class="flex items-center justify-between gap-2">

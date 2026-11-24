@@ -82,9 +82,9 @@ export function productFormState(product?: Product): ProductFormState {
   }
 }
 
-/** `"1234.50"` → `"1234,50"`: a stored Price ready to edit, written the es-AR way. */
+/** `"1234.50"` → `"1.234,50"`: a stored amount ready to edit, written the es-AR way. */
 export function priceForInput(price: string): string {
-  return price.replace('.', ',')
+  return formatMoneyInput(price.replace('.', ','))
 }
 
 /** Argentina's VAT rates; 21% is the general one. */

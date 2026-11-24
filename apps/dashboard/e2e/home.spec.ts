@@ -56,7 +56,7 @@ test('from Inicio the owner records a Payment, picking the Customer, or starts a
   await sheet.getByRole('combobox', { name: 'Cliente' }).fill('Kiosco')
   await page.getByRole('option', { name: /Kiosco La Esquina/ }).click()
   await sheet.getByRole('button', { name: 'Registrar pago' }).click()
-  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('$ 500,00')
+  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('-$ 500,00')
   await sheet.getByRole('button', { name: 'Listo' }).click()
   await expect(page.getByRole('status', { name: 'Saldo total' })).toHaveText('$ 500,00')
 

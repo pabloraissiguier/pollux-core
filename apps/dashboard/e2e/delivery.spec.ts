@@ -62,7 +62,7 @@ test('the owner follows the reparto by town and delivers an Order on account str
 
   // Success shows the Customer's new Balance.
   await expect(sheet).toContainText('Pedido entregado')
-  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('$ 2.000,00')
+  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('-$ 2.000,00')
   await sheet.getByRole('button', { name: 'Listo' }).click()
   await expect(sheet).toBeHidden()
 
@@ -89,14 +89,14 @@ test('the owner delivers an Order on account, checks the Balance and statement, 
   const sheet = page.getByRole('dialog', { name: `Entregar pedido N° ${order.number}` })
   await expect(sheet).toContainText('$ 2.469,00')
   await sheet.getByRole('button', { name: 'Confirmar entrega' }).click()
-  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('$ 2.969,00')
+  await expect(sheet.getByRole('status', { name: 'Saldo de Kiosco La Esquina' })).toHaveText('-$ 2.969,00')
   await sheet.getByRole('button', { name: 'Listo' }).click()
   await expect(page.getByText('Fecha entregada')).toBeVisible()
   await expect(page.getByText('Entregado', { exact: true })).toBeVisible()
 
   // The Customer's page: the Balance up front, and the recent Orders.
   await page.getByRole('link', { name: 'Kiosco La Esquina' }).click()
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 2.969,00')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 2.969,00')
   const recent = page.getByRole('region', { name: 'Pedidos recientes' })
   await expect(recent.getByRole('link', { name: new RegExp(`N° ${order.number}`) })).toContainText('$ 2.469,00')
 
@@ -107,17 +107,17 @@ test('the owner delivers an Order on account, checks the Balance and statement, 
   await expect(entries).toHaveCount(2)
   await expect(entries.nth(0)).toContainText('Saldo inicial')
   await expect(entries.nth(0)).toContainText('10/01/2026')
-  await expect(entries.nth(0)).toContainText('Debe $ 500,00')
-  await expect(entries.nth(0)).toContainText('Saldo $ 500,00')
+  await expect(entries.nth(0)).toContainText('Debe -$ 500,00')
+  await expect(entries.nth(0)).toContainText('Saldo -$ 500,00')
   await expect(entries.nth(1)).toContainText(`Entrega pedido N° ${order.number}`)
   await expect(entries.nth(1)).toContainText(shown(today))
-  await expect(entries.nth(1)).toContainText('Debe $ 2.469,00')
-  await expect(entries.nth(1)).toContainText('Saldo $ 2.969,00')
+  await expect(entries.nth(1)).toContainText('Debe -$ 2.469,00')
+  await expect(entries.nth(1)).toContainText('Saldo -$ 2.969,00')
 
   // A date range leaves earlier entries out, while the running Balance still counts them.
   await page.getByLabel('Desde').fill('2026-02-01')
   await expect(entries).toHaveCount(1)
-  await expect(entries.nth(0)).toContainText('Saldo $ 2.969,00')
+  await expect(entries.nth(0)).toContainText('Saldo -$ 2.969,00')
   await expect(page).toHaveURL(/desde=2026-02-01/)
   await page.getByLabel('Hasta').fill('2026-02-28')
   await expect(page.getByText('No hay movimientos en estas fechas')).toBeVisible()
@@ -136,7 +136,7 @@ test('the owner delivers an Order on account, checks the Balance and statement, 
   await page.goto(`/cuentas-corrientes/${kiosco.id}`)
   await expect(entries).toHaveCount(3)
   await expect(entries.nth(2)).toContainText(`Entrega deshecha, pedido N° ${order.number}`)
-  await expect(entries.nth(2)).toContainText('Haber $ 2.469,00')
-  await expect(entries.nth(2)).toContainText('Saldo $ 500,00')
-  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('$ 500,00')
+  await expect(entries.nth(2)).toContainText('Haber +$ 2.469,00')
+  await expect(entries.nth(2)).toContainText('Saldo -$ 500,00')
+  await expect(page.getByRole('status', { name: 'Saldo' })).toHaveText('-$ 500,00')
 })

@@ -101,6 +101,27 @@ export function parseDecimalInput(input: string): string {
   return THOUSANDS_ONLY.test(compact) ? compact.replace(/\./g, '') : compact
 }
 
+/**
+ * An amount field's text as it's typed, written the es-AR way: thousands grouped with dots, a
+ * comma before at most two decimals (`"1234567,891"` → `"1.234.567,89"`). The dots are the
+ * field's own, so any typed dot is dropped and the digits regrouped, except one typed last with
+ * no comma yet, which becomes the comma (some phone keypads have only a dot). Anything other than
+ * digits is dropped, and so are leading zeros. `parseDecimalInput` reads the result back.
+ */
+export function formatMoneyInput(input: string): string {
+  let text = input.replace(/[^\d.,]/g, '')
+  if (!text.includes(',') && text.endsWith('.')) text = `${text.slice(0, -1)},`
+  const comma = text.indexOf(',')
+  const whole = (comma === -1 ? text : text.slice(0, comma)).replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+  if (comma === -1) return groupThousands(whole)
+  const decimals = text.slice(comma + 1).replace(/\D/g, '').slice(0, 2)
+  return `${groupThousands(whole || '0')},${decimals}`
+}
+
+function groupThousands(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
 /** Medio de pago. "Cuenta corriente" is not one: it means the delivery had no Payment (ADR-0001). */
 export const paymentMethodLabels: Record<PaymentMethod, string> = {
   cash: 'Efectivo',

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import type { Money } from '@pollux/contracts'
-import { balanceCaption, debitOrCredit } from '~/utils/balance'
+import { balanceCaption, balanceTone, signedBalanceText } from '~/utils/balance'
 
 /**
- * A Customer's Balance, big: what they owe, or the credit in their favor (shown without a sign
- * and said in words, never by color alone). `label` names it, e.g. "Saldo de Kiosco La Esquina".
+ * A Customer's Balance, big: what they owe in red with a minus, or the credit in their favor in
+ * green with a plus (and said in words, never by color alone). `label` names it, e.g. "Saldo de Kiosco La Esquina".
  */
 const props = withDefaults(defineProps<{ balance: Money, label?: string }>(), { label: 'Saldo' })
-
-const figure = computed(() => debitOrCredit(props.balance))
 </script>
 
 <template>
@@ -18,8 +16,8 @@ const figure = computed(() => debitOrCredit(props.balance))
       role="status"
       :aria-label="label"
       class="text-3xl font-semibold tabular-nums"
-      :class="figure.side === 'credit' ? 'text-success' : 'text-highlighted'"
-    >{{ formatMoney(figure.amount) }}</span>
+      :class="balanceTone(props.balance)"
+    >{{ signedBalanceText(props.balance) }}</span>
     <span class="text-sm text-muted">{{ balanceCaption(balance) }}</span>
   </div>
 </template>

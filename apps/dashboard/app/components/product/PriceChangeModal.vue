@@ -40,10 +40,8 @@ const { saving, onSubmit } = useFormSubmit<z.output<typeof priceChangeFormSchema
           :description="`Actual: ${formatMoney(product.price)}. Final, con IVA incluido.`"
           required
         >
-          <UInput
+          <MoneyInput
             v-model="state.price"
-            inputmode="decimal"
-            autocomplete="off"
             icon="i-lucide-dollar-sign"
             class="w-full"
           />
