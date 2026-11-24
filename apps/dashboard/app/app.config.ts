@@ -55,8 +55,9 @@ export default defineAppConfig({
       warning: 'i-material-symbols-warning-outline-rounded'
     },
     card: {
+      // White on the page's grey: cards stand on top of it.
       defaultVariants: {
-        variant: 'subtle'
+        variant: 'outline'
       }
     },
     alert: {

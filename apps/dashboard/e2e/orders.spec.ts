@@ -28,13 +28,18 @@ test('the owner takes an Order with Discounts on a phone, sees the live total an
   // The list has a Cliente field too: wait until the new page has replaced it.
   await expect(page.getByRole('heading', { name: 'Nuevo pedido', level: 1 })).toBeVisible()
 
-  // Customer by search; with one Branch, it's picked on its own.
+  // Customer by search; with one Branch, it's picked on its own. On a phone that moves on to the
+  // Products, with the Customer kept in sight above them.
   await page.getByRole('combobox', { name: 'Cliente' }).fill('kiosco')
   await page.getByRole('option', { name: /Kiosco La Esquina/ }).click()
   await expect(page.getByText('Belgrano 50, Corral de Bustos')).toBeVisible()
-  await expect(page.getByLabel('Fecha de entrega')).toHaveValue(dayInArgentina(1))
+  if (isMobile) {
+    await expect(page.getByRole('region', { name: 'Cliente del pedido' })).toContainText('Kiosco La Esquina')
+    await expect(page.getByRole('combobox', { name: 'Cliente' })).toHaveCount(0)
+  }
 
   // A Product found by search, with its Price and Available stock.
+  if (isMobile) await page.getByRole('button', { name: 'Agregar', exact: true }).click()
   const picker = page.getByRole('region', { name: 'Agregar productos' })
   await picker.getByRole('combobox', { name: 'Buscar producto' }).fill('vaso')
   // A tap on the result adds it.
@@ -48,6 +53,7 @@ test('the owner takes an Order with Discounts on a phone, sees the live total an
   await picker.getByRole('button', { name: 'Categoría' }).click()
   await page.getByRole('option', { name: 'Descartables' }).click()
   await picker.getByRole('option', { name: /Bandeja 103/ }).click()
+  if (isMobile) await page.getByRole('button', { name: 'Listo' }).click()
 
   const lines = page.getByRole('region', { name: 'Productos del pedido' })
   await lines.getByRole('button', { name: 'Sumar uno a Vaso térmico 180 cc' }).click()
@@ -60,6 +66,9 @@ test('the owner takes an Order with Discounts on a phone, sees the live total an
   await expect(bandejaLine).toContainText('Sin stock suficiente: el disponible quedaría en -2')
   await expect(lines.getByRole('listitem').filter({ hasText: 'Vaso térmico 180 cc' })).not.toContainText('Sin stock suficiente')
 
+  // On a phone the last step has the Delivery date, the Order Discount and notes.
+  if (isMobile) await page.getByRole('button', { name: 'Siguiente' }).click()
+  await expect(page.getByLabel('Fecha de entrega')).toHaveValue(dayInArgentina(1))
   await page.getByRole('textbox', { name: 'Descuento del pedido' }).fill('5')
   await page.getByRole('textbox', { name: 'Notas' }).fill('Dejar en el depósito')
 
@@ -77,7 +86,7 @@ test('the owner takes an Order with Discounts on a phone, sees the live total an
 
   // A double tap saves once.
   const writes = watchOrderWrites(page)
-  await page.getByRole('button', { name: 'Guardar pedido' }).dblclick()
+  await page.getByRole('button', { name: 'Confirmar pedido' }).dblclick()
   const saved = page.getByRole('dialog', { name: 'Pedido N° 1 guardado' })
   await expect(saved).toBeVisible()
   await expect(saved).toContainText('$ 3.515,00')
@@ -129,11 +138,12 @@ test('the owner takes a phone Order at the PC with the keyboard alone after pick
   const writes = watchOrderWrites(page)
 
   if (isMobile) {
+    await expect(page.getByText('Todavía no agregaste productos.')).toBeVisible()
+    await page.getByRole('button', { name: 'Agregar', exact: true }).click()
     // On a phone the keyboard's search key only searches: a Product is added by tapping it.
     await search.fill('bandeja')
     await search.press('Enter')
     await expect(picker.getByRole('option', { name: /Bandeja 103/ })).toBeVisible()
-    await expect(page.getByText('Todavía no agregaste productos.')).toBeVisible()
     return
   }
 
@@ -167,12 +177,74 @@ test('the owner takes a phone Order at the PC with the keyboard alone after pick
   // 2 × 500 + 1 × 1.200; none of those Enters saved the Order.
   await expect(page.getByRole('status', { name: 'Total del pedido' })).toHaveText('$ 2.200,00')
   expect(writes).toEqual([])
-  await tabTo(page, page.getByRole('button', { name: 'Guardar pedido' }))
+  await tabTo(page, page.getByRole('button', { name: 'Confirmar pedido' }))
   await page.keyboard.press('Enter')
   const saved = page.getByRole('dialog', { name: 'Pedido N° 1 guardado' })
   await expect(saved).toBeVisible()
   await expect(saved).toContainText('$ 2.200,00')
   expect(writes).toEqual(['POST /orders'])
+})
+
+test('on a phone the Order is taken in steps, and each step is checked before the next', async ({ page, createOwner, signIn, createCustomer, callApi }) => {
+  const userId = await createOwner('Gio Pack')
+  await createCustomer(userId, {
+    name: 'Supermercado Isla',
+    branches: [{ name: 'Centro', address: 'San Martín 100', city: 'Isla Verde' }, { name: 'Ruta', address: 'Ruta 11 km 2', city: 'Isla Verde' }]
+  })
+  await createCustomer(userId, { name: 'Kiosco La Esquina', branches: [{ address: 'Belgrano 50', city: 'Corral de Bustos' }] })
+  await callApi(userId, 'POST', '/products', { code: 'BAN-103', name: 'Bandeja aluminio F100 x100 con tapa', price: '500' })
+  await signIn(userId)
+  await expect(page).toHaveURL('/')
+  // The narrowest phone in use.
+  await page.setViewportSize({ width: 375, height: 667 })
+  await page.goto('/pedidos/nuevo')
+
+  // No Customer yet: the first step stays.
+  await page.getByRole('button', { name: 'Siguiente' }).click()
+  await expect(page.getByText('Elegí un cliente')).toBeVisible()
+
+  // Several Branches: the step waits for one, then moves on by itself.
+  await page.getByRole('combobox', { name: 'Cliente' }).fill('super')
+  await page.getByRole('option', { name: /Supermercado Isla/ }).click()
+  await expect(page.getByRole('region', { name: 'Agregar productos' })).toHaveCount(0)
+  await page.getByRole('combobox', { name: 'Sucursal' }).click()
+  await page.getByRole('option', { name: /Ruta 11 km 2/ }).click()
+  const toolbar = page.getByRole('region', { name: 'Cliente del pedido' })
+  await expect(toolbar).toContainText('Supermercado Isla')
+  await expect(toolbar).toContainText('Ruta · Ruta 11 km 2, Isla Verde')
+
+  // No Products yet: the second step stays.
+  await page.getByRole('button', { name: 'Siguiente' }).click()
+  await expect(page.getByText('Agregá al menos un producto')).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Notas' })).toHaveCount(0)
+
+  // The Customer can still change, and the lines stay as they were.
+  // "Agregar" opens the picker from the right; "Listo" closes it, the lines updated.
+  await page.getByRole('button', { name: 'Agregar', exact: true }).click()
+  const picker = page.getByRole('region', { name: 'Agregar productos' })
+  await picker.getByRole('combobox', { name: 'Buscar producto' }).fill('bandeja')
+  await picker.getByRole('option', { name: /Bandeja aluminio F100/ }).click()
+  await page.getByRole('button', { name: 'Listo' }).click()
+  await toolbar.getByRole('button', { name: 'Cambiar' }).click()
+  await page.getByRole('combobox', { name: 'Cliente' }).fill('kiosco')
+  await page.getByRole('option', { name: /Kiosco La Esquina/ }).click()
+  await expect(toolbar).toContainText('Kiosco La Esquina')
+  const lines = page.getByRole('region', { name: 'Productos del pedido' })
+  await expect(lines.getByRole('spinbutton', { name: 'Cantidad de Bandeja aluminio F100 x100 con tapa' })).toHaveValue('1')
+  // The lines and the results fit the screen: nothing scrolls sideways.
+  const panelBody = page.locator('#order-form').locator('..')
+  expect(await panelBody.evaluate(body => body.scrollWidth - body.clientWidth)).toBe(0)
+
+  // The last step saves; back there, the step list goes back too.
+  await page.getByRole('button', { name: 'Siguiente' }).click()
+  await page.getByRole('button', { name: 'Paso anterior' }).click()
+  await expect(lines).toBeVisible()
+  await page.getByRole('button', { name: 'Siguiente' }).click()
+  await expect(page.getByRole('button', { name: 'Siguiente' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Confirmar pedido' }).click()
+  const saved = page.getByRole('dialog', { name: 'Pedido N° 1 guardado' })
+  await expect(saved).toContainText('Kiosco La Esquina')
+  await expect(saved).toContainText('$ 500,00')
 })
 
 test('the owner edits a Pending Order: kept lines keep their price, new lines take the current one', async ({ page, createOwner, signIn, createCustomer, callApi }) => {
@@ -198,7 +270,8 @@ test('the owner edits a Pending Order: kept lines keep their price, new lines ta
   await page.goto(`/pedidos/${order.id}`)
   await page.getByRole('link', { name: 'Editar' }).click()
   await expect(page).toHaveURL(`/pedidos/${order.id}/editar`)
-  await expect(page.getByText('Kiosco La Esquina')).toBeVisible()
+  // An edit starts at the lines, with the Customer above them.
+  await expect(page.getByRole('region', { name: 'Cliente del pedido' })).toContainText('Kiosco La Esquina')
 
   const lines = page.getByRole('region', { name: 'Productos del pedido' })
   const vasoLine = lines.getByRole('listitem').filter({ hasText: 'Vaso térmico 180 cc' })
@@ -211,10 +284,14 @@ test('the owner edits a Pending Order: kept lines keep their price, new lines ta
   await lines.getByRole('button', { name: 'Sumar uno a Vaso térmico 180 cc' }).click()
   await expect(vasoLine).toContainText('Sin stock suficiente: el disponible quedaría en -1')
 
+  // On a phone the picker opens from the right, and "Listo" goes back to the lines.
+  await page.getByRole('button', { name: 'Agregar', exact: true }).click()
   const picker = page.getByRole('region', { name: 'Agregar productos' })
   await picker.getByRole('combobox', { name: 'Buscar producto' }).fill('bandeja')
   await picker.getByRole('option', { name: /Bandeja 103/ }).click()
+  await page.getByRole('button', { name: 'Listo' }).click()
   await expect(lines.getByRole('listitem').filter({ hasText: 'Bandeja 103' })).toContainText('$ 600,00 c/u (precio actual)')
+  await page.getByRole('button', { name: 'Siguiente' }).click()
   await page.getByRole('textbox', { name: 'Descuento del pedido' }).fill('10')
   // 3 × 1.000 (kept price) + 1 × 600 (today's Price) = 3.600, less 10 %.
   await expect(page.getByRole('status', { name: 'Total del pedido' })).toHaveText('$ 3.240,00')

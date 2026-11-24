@@ -7,9 +7,12 @@ import type { Product } from '~/utils/products'
  *
  * At the PC the search is a combobox: the arrow keys move through the results and Enter adds the
  * highlighted one (the first by default), leaving the text selected so Enter again adds one more
- * and typing starts the next search. On a touch screen the keyboard's search key only searches.
+ * and typing starts the next search. On a touch screen the keyboard's search key only searches,
+ * and the highlight isn't shown, since nothing but the keyboard moves it.
+ *
+ * `bare` leaves out its own heading, for a container that already names it (the phone's slideover).
  */
-defineProps<{ inOrder: Record<string, number> }>()
+defineProps<{ inOrder: Record<string, number>, bare?: boolean }>()
 const emit = defineEmits<{ add: [product: Product] }>()
 
 const SEARCH_DELAY_MS = 250
@@ -120,10 +123,12 @@ function onEnter(event: KeyboardEvent) {
 
 <template>
   <section
-    aria-labelledby="agregar-productos"
+    :aria-labelledby="bare ? undefined : 'agregar-productos'"
+    :aria-label="bare ? 'Agregar productos' : undefined"
     class="flex flex-col gap-3"
   >
     <h2
+      v-if="!bare"
       id="agregar-productos"
       class="font-semibold text-highlighted"
     >
@@ -132,7 +137,7 @@ function onEnter(event: KeyboardEvent) {
 
     <div
       role="search"
-      class="flex flex-col gap-2 sm:flex-row"
+      class="flex gap-2"
     >
       <UInput
         ref="searchInput"
@@ -144,7 +149,7 @@ function onEnter(event: KeyboardEvent) {
         :aria-controls="results.length ? listboxId : undefined"
         :aria-activedescendant="results.length ? optionId(highlighted) : undefined"
         icon="i-lucide-search"
-        placeholder="Nombre, código o marca"
+        placeholder="Buscar producto"
         aria-label="Buscar producto"
         autocomplete="off"
         autocorrect="off"
@@ -160,12 +165,13 @@ function onEnter(event: KeyboardEvent) {
         :items="categories"
         value-key="id"
         label-key="name"
-        icon="i-lucide-tag"
         placeholder="Categoría"
         aria-label="Categoría"
         :search-input="{ placeholder: 'Buscar categoría', autofocus: false }"
+        :content="{ align: 'end' }"
+        :ui="{ content: 'min-w-56' }"
         clear
-        class="w-full sm:w-56"
+        class="w-36 shrink-0 sm:w-56"
       />
     </div>
 
@@ -196,41 +202,51 @@ function onEnter(event: KeyboardEvent) {
       :id="listboxId"
       role="listbox"
       aria-label="Resultados"
-      class="divide-y divide-default"
     >
+      <!-- Thin inset separators; Products already on the Order stand out in a light blue. -->
       <li
         v-for="(product, index) in results"
         :id="optionId(index)"
         :key="product.id"
         role="option"
         :aria-selected="index === highlighted"
-        class="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-elevated/50 aria-selected:bg-elevated"
+        class="relative flex cursor-pointer items-center justify-between gap-3 px-3 py-2 not-first:before:absolute not-first:before:inset-x-3 not-first:before:top-0 not-first:before:h-px not-first:before:bg-(--ui-border)/60"
+        :class="inOrder[product.id]
+          ? 'bg-primary/10 pointer-fine:hover:bg-primary/15 pointer-fine:aria-selected:bg-primary/20'
+          : 'pointer-fine:hover:bg-elevated/50 pointer-fine:aria-selected:bg-elevated'"
         @click="add(product)"
       >
         <span class="flex min-w-0 flex-col">
           <span class="truncate font-medium text-highlighted">{{ product.name }}</span>
-          <span class="truncate text-sm text-muted tabular-nums">
-            {{ product.code }} · {{ formatMoney(product.price) }}
-          </span>
-          <span
-            class="flex items-center gap-1 text-sm tabular-nums"
-            :class="product.stock.available < 0 ? 'text-error' : 'text-muted'"
-          >
-            <UIcon
-              v-if="product.stock.available < 0"
-              name="i-lucide-triangle-alert"
-              class="size-4 shrink-0"
-            />
-            Disponible {{ formatUnits(product.stock.available) }}
+          <!-- Code, Price and Available stock on one line, wrapping only when it must. -->
+          <span class="flex flex-wrap items-center gap-x-1.5 text-sm text-muted tabular-nums">
+            <span>{{ product.code }}</span>
+            <span aria-hidden="true">·</span>
+            <span>{{ formatMoney(product.price) }}</span>
+            <span aria-hidden="true">·</span>
+            <span
+              class="inline-flex items-center gap-1"
+              :class="{ 'text-error': product.stock.available < 0 }"
+            >
+              <UIcon
+                v-if="product.stock.available < 0"
+                name="i-lucide-triangle-alert"
+                class="size-4 shrink-0"
+              />
+              Disponible {{ formatUnits(product.stock.available) }}
+            </span>
           </span>
         </span>
         <span class="flex shrink-0 items-center gap-2">
+          <!-- Just the count on screen; a screen reader hears what it counts. -->
           <UBadge
             v-if="inOrder[product.id]"
-            :label="`${formatUnits(inOrder[product.id]!)} en el pedido`"
             color="primary"
             variant="subtle"
-          />
+            size="md"
+          >
+            {{ formatUnits(inOrder[product.id]!) }}<span class="sr-only"> en el pedido</span>
+          </UBadge>
           <UIcon
             name="i-lucide-plus"
             class="size-5 text-primary"
