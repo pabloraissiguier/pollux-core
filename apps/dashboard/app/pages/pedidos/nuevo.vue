@@ -24,6 +24,7 @@ watch(open, (isOpen) => {
   <OrderForm
     :key="formKey"
     @saved="onSaved"
+    @discarded="formKey++"
   >
     <UModal
       v-model:open="open"
