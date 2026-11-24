@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ButtonProps, FormErrorEvent, StepperItem } from '@nuxt/ui'
 import type { CustomerOption } from '~/utils/customers'
+import type { OrderDraft, OrderFormStep } from '~/composables/useOrderDraft'
 import type { Order, OrderFormOutput, OrderFormState, SavedOrder } from '~/utils/orders'
 import type { Product } from '~/utils/products'
 
@@ -14,18 +15,23 @@ import type { Product } from '~/utils/products'
  * Customer in a toolbar under the navbar. Moving forward checks the steps it leaves behind.
  *
  * With `order`, it edits that Pending Order: its Customer is fixed (`customer` gives its Branches)
- * and its lines keep their frozen prices.
+ * and its lines keep their frozen prices. Without one, the Order being taken is kept on the device
+ * (`useOrderDraft`) until it's saved or discarded ("Empezar de nuevo", which emits `discarded`).
  */
 const props = defineProps<{ order?: Order, customer?: CustomerOption, available?: Record<string, number> }>()
-const emit = defineEmits<{ saved: [order: SavedOrder] }>()
+const emit = defineEmits<{ saved: [order: SavedOrder], discarded: [] }>()
 
 const form = useTemplateRef('form')
 
+// A new Order picks up where the owner left it on this device.
+const draft = props.order ? null : useOrderDraft()
+const restored = draft?.read() ?? null
+
 const state = reactive<OrderFormState>(props.order
   ? orderFormStateFrom(props.order, props.available)
-  : { customerId: undefined, branchId: undefined, deliveryDate: tomorrowInArgentina(), discountPercent: '', notes: '', lines: [] })
+  : restored?.state ?? { customerId: undefined, branchId: undefined, deliveryDate: tomorrowInArgentina(), discountPercent: '', notes: '', lines: [] })
 
-const customer = ref<CustomerOption | undefined>(props.customer)
+const customer = ref<CustomerOption | undefined>(props.customer ?? restored?.customer ?? undefined)
 // A Customer with a single Branch has it picked on their behalf.
 watch(customer, (picked) => {
   state.customerId = picked?.id
@@ -60,7 +66,7 @@ function addProduct(product: Product) {
   })
 }
 
-type Step = 'cliente' | 'productos' | 'confirmar'
+type Step = OrderFormStep
 const STEPS: Step[] = ['cliente', 'productos', 'confirmar']
 const stepItems: StepperItem[] = [
   { value: 'cliente', title: 'Cliente', icon: 'i-lucide-user' },
@@ -70,7 +76,7 @@ const stepItems: StepperItem[] = [
 
 const wide = useWideScreen()
 // An edit already has its Customer, so it starts at the lines.
-const step = ref<Step>(props.order ? 'productos' : 'cliente')
+const step = ref<Step>(props.order ? 'productos' : restored?.step ?? 'cliente')
 const stepIndex = computed(() => STEPS.indexOf(step.value))
 const nextStep = computed(() => STEPS[stepIndex.value + 1])
 const previousStep = computed(() => STEPS[stepIndex.value - 1])
@@ -136,6 +142,24 @@ function removeLine(index: number) {
   state.lines.splice(index, 1)
 }
 
+// Every change is kept on the device, so leaving by mistake loses nothing.
+const currentDraft = (): OrderDraft => ({ state, customer: customer.value ?? null, step: step.value })
+const dirty = computed(() => !!draft && draft.hasContent(currentDraft()))
+if (draft) watch([() => state, customer, step], () => draft.write(currentDraft()), { deep: true })
+
+const toast = useToast()
+onMounted(() => {
+  if (restored) toast.add({ title: 'Recuperamos el pedido que estabas cargando', icon: 'i-lucide-history' })
+})
+
+// "Empezar de nuevo" asks first: a slip of the finger must not lose the Order.
+const discarding = ref(false)
+function discard() {
+  draft?.clear()
+  discarding.value = false
+  emit('discarded')
+}
+
 // Two taps on Save must not take the Order twice: the second one finds it saving.
 const { saving, onSubmit } = useFormSubmit<OrderFormOutput>(form, async (data, request) => {
   const order = props.order
@@ -143,7 +167,9 @@ const { saving, onSubmit } = useFormSubmit<OrderFormOutput>(form, async (data, r
     const { customerId: _fixed, ...changes } = data
     emit('saved', await request(c => c.orders[':id'].$patch({ param: { id: order.id }, json: changes })))
   } else {
-    emit('saved', await request(c => c.orders.$post({ json: data })))
+    const saved = await request(c => c.orders.$post({ json: data }))
+    draft?.clear()
+    emit('saved', saved)
   }
 })
 
@@ -176,6 +202,20 @@ function onInvalid(event: FormErrorEvent) {
             :aria-label="order ? 'Volver al pedido' : 'Volver a Pedidos'"
             color="neutral"
             variant="ghost"
+          />
+        </template>
+
+        <template
+          v-if="dirty"
+          #right
+        >
+          <UButton
+            :label="wide ? 'Empezar de nuevo' : undefined"
+            aria-label="Empezar de nuevo"
+            icon="i-lucide-rotate-ccw"
+            color="neutral"
+            variant="ghost"
+            @click="discarding = true"
           />
         </template>
       </UDashboardNavbar>
@@ -451,6 +491,30 @@ function onInvalid(event: FormErrorEvent) {
           </div>
         </template>
       </USlideover>
+
+      <UModal
+        v-model:open="discarding"
+        title="¿Descartar este pedido?"
+        description="Se borran el cliente, los productos y lo demás que cargaste. No se puede deshacer."
+      >
+        <template #footer>
+          <div class="flex w-full flex-col gap-2 sm:flex-row-reverse">
+            <UButton
+              label="Sí, descartar"
+              color="error"
+              block
+              @click="discard"
+            />
+            <UButton
+              label="Volver"
+              color="neutral"
+              variant="outline"
+              block
+              @click="discarding = false"
+            />
+          </div>
+        </template>
+      </UModal>
 
       <!-- The page's own overlays, e.g. the saved-Order sheet. -->
       <slot />

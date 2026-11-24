@@ -72,5 +72,5 @@ export function useActiveBusiness() {
     activeBusinessId.value = null
   }
 
-  return { businesses, activeBusinessId, activeBusiness, hasSeveral, selectBusiness, forgetBusiness, renameActiveBusiness, loadBusinesses, restoreChoice, forgetSession }
+  return { userId: readonly(userId), businesses, activeBusinessId, activeBusiness, hasSeveral, selectBusiness, forgetBusiness, renameActiveBusiness, loadBusinesses, restoreChoice, forgetSession }
 }
